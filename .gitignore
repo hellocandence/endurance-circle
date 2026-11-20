@@ -46,3 +46,8 @@ next-env.d.ts
 # test output
 /test-results/
 /playwright-report/
+
+# private project docs (kept local only)
+CLAUDE.md
+docs/
+.env*.local
