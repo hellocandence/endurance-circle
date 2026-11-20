@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { contactEmail } from "@/server/email/contact";
 
 export const metadata = { title: "Privacy · Cadence" };
 
 export default function PrivacyPage() {
+  const email = contactEmail();
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-6">
       <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
@@ -24,7 +26,7 @@ export default function PrivacyPage() {
       </ul>
 
       <h2 className="mt-2 text-xl font-semibold">Your choices</h2>
-      <p className="text-neutral-700">You can edit your details in Settings. To delete your account and data, ask the owner at <a className="text-accent-strong underline" href="mailto:hello.candence@gmail.com">hello.candence@gmail.com</a>.</p>
+      <p className="text-neutral-700">You can edit your details in Settings. To delete your account and data, ask the owner{email ? <> at <a className="text-accent-strong underline" href={`mailto:${email}`}>{email}</a></> : null}.</p>
 
       <Link href="/" className="text-accent-strong underline">Back to Cadence</Link>
     </main>

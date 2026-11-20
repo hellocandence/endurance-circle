@@ -69,3 +69,13 @@ describe("Gmail API mailer", () => {
     expect((calls[1].init.headers as Record<string, string>).Authorization).toBe("Bearer tok");
   });
 });
+
+describe("contactEmail", () => {
+  it("is the address the app sends from, and nothing when none is set", async () => {
+    const { contactEmail } = await import("@/server/email/contact");
+    expect(contactEmail({ EMAIL_FROM: "Cadence <hello@example.com>" })).toBe("hello@example.com");
+    expect(contactEmail({ EMAIL_FROM: "plain@example.com" })).toBe("plain@example.com");
+    expect(contactEmail({ EMAIL_FROM: "not an address" })).toBeNull();
+    expect(contactEmail({})).toBeNull();
+  });
+});

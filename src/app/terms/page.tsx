@@ -1,8 +1,10 @@
 import Link from "next/link";
+import { contactEmail } from "@/server/email/contact";
 
 export const metadata = { title: "Terms · Cadence" };
 
 export default function TermsPage() {
+  const email = contactEmail();
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-6">
       <h1 className="text-3xl font-semibold tracking-tight">Terms</h1>
@@ -16,7 +18,7 @@ export default function TermsPage() {
         <li>The app is provided as is, without any warranty. Things may change or stop working.</li>
       </ul>
 
-      <p className="text-neutral-700">Questions: <a className="text-accent-strong underline" href="mailto:hello.candence@gmail.com">hello.candence@gmail.com</a>. See also the <Link href="/privacy" className="text-accent-strong underline">privacy page</Link>.</p>
+      <p className="text-neutral-700">Questions? Ask the circle owner{email ? <> at <a className="text-accent-strong underline" href={`mailto:${email}`}>{email}</a></> : null}. See also the <Link href="/privacy" className="text-accent-strong underline">privacy page</Link>.</p>
 
       <Link href="/" className="text-accent-strong underline">Back to Cadence</Link>
     </main>
