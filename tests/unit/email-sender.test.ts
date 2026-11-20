@@ -19,3 +19,13 @@ describe("getMailer", () => {
     expect(() => getMailer({ NODE_ENV: "production" })).toThrow(/BREVO_API_KEY/);
   });
 });
+
+describe("getMailer SMTP", () => {
+  it("requires EMAIL_FROM with SMTP credentials", () => {
+    expect(() => getMailer({ SMTP_USER: "a@gmail.com", SMTP_PASS: "p" })).toThrow(/EMAIL_FROM/);
+  });
+  it("builds a mailer and wins over Brevo/Resend", () => {
+    const m = getMailer({ SMTP_USER: "a@gmail.com", SMTP_PASS: "p", EMAIL_FROM: "A <a@gmail.com>", BREVO_API_KEY: "k" });
+    expect(typeof m.send).toBe("function");
+  });
+});

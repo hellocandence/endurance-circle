@@ -1,3 +1,5 @@
+import nodemailer from "nodemailer";
+
 export type Email = { to: string; subject: string; text: string };
 export type Mailer = { send(message: Email): Promise<void> };
 
@@ -45,10 +47,39 @@ function brevoMailer(apiKey: string, from: string): Mailer {
   };
 }
 
-/** Brevo or Resend when their key is set; the dev mailer otherwise. Production fails closed. */
-export function getMailer(
-  env: { BREVO_API_KEY?: string; RESEND_API_KEY?: string; EMAIL_FROM?: string; NODE_ENV?: string } = process.env,
-): Mailer {
+type MailEnv = {
+  SMTP_USER?: string;
+  SMTP_PASS?: string;
+  SMTP_HOST?: string;
+  SMTP_PORT?: string;
+  BREVO_API_KEY?: string;
+  RESEND_API_KEY?: string;
+  EMAIL_FROM?: string;
+  NODE_ENV?: string;
+};
+
+/** Gmail (or any SMTP) with an app password. Port 465 is implicit TLS; 587 uses STARTTLS. */
+function smtpMailer(env: MailEnv & { SMTP_USER: string; SMTP_PASS: string; EMAIL_FROM: string }): Mailer {
+  const port = Number(env.SMTP_PORT) || 465;
+  const transport = nodemailer.createTransport({
+    host: env.SMTP_HOST || "smtp.gmail.com",
+    port,
+    secure: port === 465,
+    auth: { user: env.SMTP_USER, pass: env.SMTP_PASS.replace(/\s/g, "") }, // Google shows app passwords in groups of four
+  });
+  return {
+    async send({ to, subject, text }) {
+      await transport.sendMail({ from: env.EMAIL_FROM, to, subject, text });
+    },
+  };
+}
+
+/** SMTP, Brevo or Resend when configured (in that order); the dev mailer otherwise. Production fails closed. */
+export function getMailer(env: MailEnv = process.env): Mailer {
+  if (env.SMTP_USER && env.SMTP_PASS) {
+    if (!env.EMAIL_FROM) throw new Error("EMAIL_FROM is required when SMTP_USER is set");
+    return smtpMailer({ ...env, SMTP_USER: env.SMTP_USER, SMTP_PASS: env.SMTP_PASS, EMAIL_FROM: env.EMAIL_FROM });
+  }
   if (env.BREVO_API_KEY) {
     if (!env.EMAIL_FROM) throw new Error("EMAIL_FROM is required when BREVO_API_KEY is set");
     return brevoMailer(env.BREVO_API_KEY, env.EMAIL_FROM);
@@ -57,6 +88,6 @@ export function getMailer(
     if (!env.EMAIL_FROM) throw new Error("EMAIL_FROM is required when RESEND_API_KEY is set");
     return resendMailer(env.RESEND_API_KEY, env.EMAIL_FROM);
   }
-  if (env.NODE_ENV === "production") throw new Error("BREVO_API_KEY (or RESEND_API_KEY) is required in production");
+  if (env.NODE_ENV === "production") throw new Error("SMTP_USER and SMTP_PASS (or BREVO_API_KEY / RESEND_API_KEY) are required in production");
   return devMailer;
 }

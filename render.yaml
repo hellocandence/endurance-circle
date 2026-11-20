@@ -13,7 +13,7 @@ services:
     # `pnpm db:migrate` to preDeployCommand instead (free web services do not support pre-deploy commands).
     startCommand: pnpm db:migrate && pnpm db:seed && pnpm start
     healthCheckPath: /api/health
-    autoDeploy: true
+    autoDeployTrigger: checksPass # deploy each new commit on main, but only after the GitHub Actions CI checks pass
     envVars:
       - key: NODE_VERSION
         value: "22"
@@ -25,9 +25,11 @@ services:
         sync: false
       - key: OWNER_EMAIL # becomes the OWNER on first boot
         sync: false
-      - key: BREVO_API_KEY # email (verification, password reset). Required in production (or RESEND_API_KEY)
+      - key: SMTP_USER # Gmail address that sends mail (verification, password reset). Required in production
         sync: false
-      - key: EMAIL_FROM # e.g. Cadence <you@gmail.com>; must be a verified Brevo sender
+      - key: SMTP_PASS # Gmail App password (not the account password)
+        sync: false
+      - key: EMAIL_FROM # e.g. Cadence <you@gmail.com>; Gmail only sends as SMTP_USER
         sync: false
       - key: AUTH_GOOGLE_ID # optional until Google sign-in is set up (T083)
         sync: false
