@@ -15,24 +15,7 @@ export function createRateLimiter(opts: { limit: number; windowMs: number }) {
     }
   }
 
-  const recent = (key: string, now: number) => (hits.get(key) ?? []).filter((t) => t > now - opts.windowMs);
-  const verdict = (times: number[], now: number): LimitResult =>
-    times.length >= opts.limit
-      ? { allowed: false, retryAfterSec: Math.max(1, Math.ceil((times[0] + opts.windowMs - now) / 1000)) }
-      : { allowed: true };
-
   return {
-    /** Would an attempt be allowed right now? Records nothing (for failure-only counters). */
-    peek(key: string, now = Date.now()): LimitResult {
-      return verdict(recent(key, now), now);
-    },
-    /** Record one attempt without checking (call after a failure). */
-    record(key: string, now = Date.now()) {
-      const times = recent(key, now);
-      times.push(now);
-      hits.set(key, times);
-      if (hits.size > 10_000) prune(now);
-    },
     /** Records an attempt if allowed. Rejected attempts are not recorded, so they do not extend the lockout. */
     check(key: string, now = Date.now()): LimitResult {
       const times = (hits.get(key) ?? []).filter((t) => t > now - opts.windowMs);
@@ -44,6 +27,13 @@ export function createRateLimiter(opts: { limit: number; windowMs: number }) {
       hits.set(key, times);
       if (hits.size > 10_000) prune(now);
       return { allowed: true };
+    },
+    /** Give back the most recent slot (an attempt that turned out not to count, e.g. a correct password). */
+    release(key: string) {
+      const times = hits.get(key);
+      if (!times) return;
+      times.pop();
+      if (times.length === 0) hits.delete(key);
     },
     reset(key: string) {
       hits.delete(key);
@@ -73,16 +63,7 @@ export function tooManyRequests(retryAfterSec: number) {
   return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: { "Retry-After": String(retryAfterSec) } });
 }
 
-/** Like `enforce`, but only looks: nothing is counted. Pair with `limiter.record(key)` on failure. */
-export function enforcePeek(checks: Array<[RateLimiter, string]>): NextResponse | null {
-  for (const [limiter, key] of checks) {
-    const r = limiter.peek(key);
-    if (!r.allowed) return tooManyRequests(r.retryAfterSec);
-  }
-  return null;
-}
-
-/** First rejected limiter wins; limiters before it have already counted this attempt (acceptable). */
+/** First rejected limiter wins; limiters before it have already counted this attempt (acceptable). Each check reserves a slot. */
 export function enforce(checks: Array<[RateLimiter, string]>): NextResponse | null {
   for (const [limiter, key] of checks) {
     const r = limiter.check(key);

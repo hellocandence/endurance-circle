@@ -40,15 +40,26 @@ describe("createRateLimiter", () => {
   });
 });
 
-describe("peek / record (failure-only counters)", () => {
-  it("peek never counts, record does", () => {
+describe("release (refund a slot)", () => {
+  it("gives back the latest attempt so a correct password does not count", () => {
     const l = createRateLimiter({ limit: 2, windowMs: 10 * MIN });
-    for (let i = 0; i < 20; i++) expect(l.peek("k", i).allowed).toBe(true); // looking is free
-    l.record("k", 100);
-    expect(l.peek("k", 101).allowed).toBe(true);
-    l.record("k", 102);
-    expect(l.peek("k", 103)).toEqual({ allowed: false, retryAfterSec: Math.ceil((100 + 10 * MIN - 103) / 1000) });
-    expect(l.peek("k", 100 + 10 * MIN + 1).allowed).toBe(true); // first failure aged out
+    expect(l.check("k", 0).allowed).toBe(true);
+    expect(l.check("k", 1).allowed).toBe(true);
+    expect(l.check("k", 2).allowed).toBe(false);
+    l.release("k");
+    expect(l.check("k", 3).allowed).toBe(true);
+    l.release("missing"); // no-op
+  });
+
+  it("parallel attempts cannot exceed the limit: each reserves its slot before doing the slow work", async () => {
+    const l = createRateLimiter({ limit: 5, windowMs: 10 * MIN });
+    const attempt = async () => {
+      if (!l.check("k").allowed) return "blocked";
+      await new Promise((r) => setTimeout(r, 5)); // stands in for the argon2 check
+      return "ran";
+    };
+    const results = await Promise.all(Array.from({ length: 20 }, attempt));
+    expect(results.filter((r) => r === "ran")).toHaveLength(5);
   });
 });
 
