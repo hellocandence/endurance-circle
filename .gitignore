@@ -51,3 +51,6 @@ next-env.d.ts
 CLAUDE.md
 docs/
 .env*.local
+
+# local embedded Postgres (PGlite)
+/.data/

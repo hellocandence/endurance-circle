@@ -9,11 +9,17 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "db:migrate": "tsx src/server/db/migrate.ts",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.16",
+    "@electric-sql/pglite-pgvector": "^0.0.17",
+    "drizzle-orm": "^0.45.4",
     "framer-motion": "^14.14.0",
     "next": "15.5.29",
+    "pg": "^8.23.1",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -23,11 +29,14 @@
     "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pg": "^8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.11",
     "eslint": "^9",
     "eslint-config-next": "15.5.29",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.1.1"
   }
