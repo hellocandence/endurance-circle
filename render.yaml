@@ -1,4 +1,4 @@
-# Render Blueprint for Cadence: one Node web service (UI + API) and one Postgres with pgvector.
+# Render Blueprint for Cadence: one Node web service (UI + API). The database is Supabase Postgres (free plan never expires), set via DATABASE_URL.
 # Deploy: Render dashboard > New > Blueprint > pick this repo. Then fill in the variables marked "sync: false".
 # Steps, costs and the post-deploy checklist are in docs/03-ARCHITECTURE.md section 7.
 
@@ -17,30 +17,19 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: DATABASE_URL # the database's *internal* URL (fast, no SSL needed)
-        fromDatabase:
-          name: cadence-db
-          property: connectionString
+      - key: DATABASE_URL # Supabase Session pooler URI (port 5432) ending in ?sslmode=require. Render has no IPv6, so not the direct host
+        sync: false
       - key: AUTH_SECRET
         generateValue: true # random, stays the same across deploys
       - key: AUTH_URL # the public https URL, e.g. https://cadence.onrender.com. Set after the first deploy, then redeploy
         sync: false
       - key: OWNER_EMAIL # becomes the OWNER on first boot
         sync: false
-      - key: RESEND_API_KEY # email (verification, password reset). Required in production
+      - key: BREVO_API_KEY # email (verification, password reset). Required in production (or RESEND_API_KEY)
         sync: false
-      - key: EMAIL_FROM # e.g. Cadence <no-reply@your-verified-domain>
+      - key: EMAIL_FROM # e.g. Cadence <you@gmail.com>; must be a verified Brevo sender
         sync: false
       - key: AUTH_GOOGLE_ID # optional until Google sign-in is set up (T083)
         sync: false
       - key: AUTH_GOOGLE_SECRET
         sync: false
-
-databases:
-  - name: cadence-db
-    databaseName: cadence
-    user: cadence
-    postgresMajorVersion: "16"
-    # WARNING: Render's free Postgres expires (historically after 30 days) and is then deleted. It is fine for
-    # trying the deployment; for real data choose a paid plan (e.g. basic-256mb) or another host that does not expire.
-    plan: free
