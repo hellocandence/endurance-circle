@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BodyLimitsForm } from "@/components/settings/BodyLimitsForm";
+import { ChallengeSection } from "@/components/settings/ChallengeSection";
 import { PhotoUploader } from "@/components/settings/PhotoUploader";
 import { LogoutButton } from "@/components/settings/LogoutButton";
 import { SecurityForm } from "@/components/settings/SecurityForm";
@@ -15,6 +16,8 @@ import { getBodyRow } from "@/server/body/service";
 import { getDb } from "@/server/db";
 import { bodyMetrics } from "@/server/privacy";
 import { getProfile } from "@/server/profile/service";
+import { requestNow } from "@/server/clock";
+import { getProgramme } from "@/server/tracker/service";
 
 export const metadata = { title: "Settings · Cadence" };
 export const dynamic = "force-dynamic";
@@ -23,12 +26,13 @@ export default async function SettingsPage() {
   const actor = await sessionActor();
   if (!actor) redirect("/login");
   const db = getDb();
-  const [profile, row, [{ passwordHash }], admin] = await Promise.all([
+  const [profile, row, [{ passwordHash }], admin, programme] = await Promise.all([
     getProfile(db, actor.id),
     getBodyRow(db, actor.id),
     db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, actor.id)).limit(1),
     // Circle admin data is only loaded for the owner (the API routes enforce it again).
     actor.role === "OWNER" ? Promise.all([listInvites(db), listMembers(db)]).then(([invites, members]) => ({ invites, members })) : Promise.resolve(null),
+    getProgramme(db, actor.id, await requestNow()),
   ]);
   if (!profile || !row) redirect("/login");
   const body = bodyMetrics(actor, actor.id, row); // own data, through the projection
@@ -39,6 +43,7 @@ export default async function SettingsPage() {
       <ProfileForm profile={profile} />
       <Link href="/install" className="glass glass-focus rounded-2xl p-4 text-center font-medium text-accent-strong">Install Cadence on your phone</Link>
       <PhotoUploader userId={profile.id} avatarPhotoId={profile.avatarPhotoId} name={profile.name} />
+      <ChallengeSection programme={programme} />
       <BodyLimitsForm body={body} />
       <SecurityForm hasPassword={passwordHash !== null} />
       {admin && <AdminPanel invites={admin.invites} members={admin.members} meId={actor.id} />}

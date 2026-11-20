@@ -1,15 +1,15 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@/server/db/client";
 import { bodyMetrics, commitments, dailyLogs, users } from "@/server/db/schema";
-import { addDays, isDateString, isSunday, localDate } from "./dates";
+import { addDays, daysBetween, isDateString, isSunday, localDate } from "./dates";
 import { completion, longestPerfectRun } from "./progress";
 import { dayNumber, DEFAULT_CONFIG, evaluateDay, proteinTarget, reachedFinalDay, type DayInput, type TrackerConfig } from "./rules";
 import type { DayPatch } from "./schema";
 
 type LogRow = typeof dailyLogs.$inferSelect;
 
-export type TrackerError = "no_active_commitment" | "invalid_date" | "before_start" | "in_future" | "locked";
-export type Result<T> = ({ ok: true } & T) | { ok: false; error: TrackerError };
+export type TrackerError = "no_active_commitment" | "invalid_date" | "before_start" | "in_future" | "locked" | "not_started_yet";
+export type Result<T> = ({ ok: true } & T) | { ok: false; error: TrackerError; startDate?: string };
 
 /** Today and yesterday can be edited (so a late-night log still lands on the right day). */
 const EDITABLE_DAYS_BACK = 1;
@@ -108,6 +108,8 @@ export async function getToday(db: Db, userId: string, now = new Date()): Promis
   const ctx = await context(db, userId, now);
   if (!ctx) return { ok: false, error: "no_active_commitment" };
   const { commitment, config, today } = ctx;
+  // A programme set to start later: nothing to log yet (the Today screen shows the countdown instead).
+  if (today < commitment.startDate) return { ok: false, error: "not_started_yet", startDate: commitment.startDate };
   return { ok: true, data: await view(db, userId, commitment.id, today, today, commitment.startDate, commitment.totalDays, config) };
 }
 
@@ -193,16 +195,69 @@ export async function saveDay(
   return { ok: true, data: await view(db, userId, commitment.id, date, today, commitment.startDate, commitment.totalDays, config) };
 }
 
-/** Start the member's own 75 Hard today (their local date). Idempotent: an active program is kept. */
-export async function startProgram(db: Db, userId: string, now = new Date()): Promise<{ created: boolean }> {
+/** How far ahead a start date may be chosen. */
+export const MAX_START_AHEAD_DAYS = 60;
+
+/** A chosen start date must be a real date from the member's today up to MAX_START_AHEAD_DAYS ahead. */
+function chooseStart(startDate: string | undefined, today: string): string | null {
+  if (startDate === undefined) return today;
+  if (!isDateString(startDate) || startDate < today || startDate > addDays(today, MAX_START_AHEAD_DAYS)) return null;
+  return startDate;
+}
+
+async function localToday(db: Db, userId: string, now: Date) {
   const [user] = await db.select({ timeZone: users.timeZone }).from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new Error("user not found");
+  return localDate(now, user.timeZone);
+}
+
+/**
+ * Start the member's own 75 Hard on `startDate` (default: their local today, up to 60 days ahead).
+ * Idempotent: an active programme is kept (use restartProgram to replace it).
+ */
+export async function startProgram(db: Db, userId: string, now = new Date(), startDate?: string): Promise<{ created: boolean } | { error: "invalid_date" }> {
+  const today = await localToday(db, userId, now);
+  const chosen = chooseStart(startDate, today);
+  if (!chosen) return { error: "invalid_date" };
   const [existing] = await db
     .select({ id: commitments.id })
     .from(commitments)
     .where(and(eq(commitments.userId, userId), eq(commitments.active, true)))
     .limit(1);
   if (existing) return { created: false };
-  await db.insert(commitments).values({ userId, startDate: localDate(now, user.timeZone) });
+  await db.insert(commitments).values({ userId, startDate: chosen });
   return { created: true };
+}
+
+/**
+ * Begin again from a chosen date. The old programme and its logs are not deleted: they are retired
+ * (active = false), and every screen only ever reads the active programme, so the member starts clean.
+ */
+export async function restartProgram(db: Db, userId: string, now = new Date(), startDate?: string): Promise<{ ok: true; startDate: string } | { ok: false; error: "invalid_date" }> {
+  const today = await localToday(db, userId, now);
+  const chosen = chooseStart(startDate, today);
+  if (!chosen) return { ok: false, error: "invalid_date" };
+  await db.transaction(async (tx) => {
+    await tx.update(commitments).set({ active: false }).where(and(eq(commitments.userId, userId), eq(commitments.active, true)));
+    await tx.insert(commitments).values({ userId, startDate: chosen });
+  });
+  return { ok: true, startDate: chosen };
+}
+
+export type ProgrammeInfo = { startDate: string; totalDays: number; today: string; started: boolean; dayNumber: number | null; daysUntilStart: number };
+
+/** The member's active programme in one glance (null when they have none). */
+export async function getProgramme(db: Db, userId: string, now = new Date()): Promise<ProgrammeInfo | null> {
+  const ctx = await context(db, userId, now);
+  if (!ctx) return null;
+  const { commitment, today } = ctx;
+  const started = today >= commitment.startDate;
+  return {
+    startDate: commitment.startDate,
+    totalDays: commitment.totalDays,
+    today,
+    started,
+    dayNumber: started ? dayNumber(commitment.startDate, today) : null,
+    daysUntilStart: started ? 0 : daysBetween(today, commitment.startDate),
+  };
 }

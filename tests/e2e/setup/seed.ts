@@ -21,6 +21,7 @@ async function main() {
         // carol and dave are for tests that change things (profile, limits, photo, password, sessions)
         { email: "carol@e2e.test", name: "Carol Member", passwordHash, emailVerified: new Date() },
         { email: "dave@e2e.test", name: "Dave Member", passwordHash, emailVerified: new Date() },
+        { email: "planner@e2e.test", name: "Planner Member", passwordHash, emailVerified: new Date() }, // no programme yet; only the challenge-start tests write to her
       ])
       .returning({ id: users.id, email: users.email });
     const id = (email: string) => rows.find((r) => r.email === email)!.id;
@@ -36,6 +37,7 @@ async function main() {
       { userId: id("frank@e2e.test"), weightKg: "72" },
       { userId: id("carol@e2e.test"), weightKg: "60" },
       { userId: id("dave@e2e.test"), weightKg: "75" },
+      { userId: id("planner@e2e.test") },
     ]);
     await handle.db.insert(commitments).values(
       ["owner@e2e.test", "alice@e2e.test", "bob@e2e.test", "carol@e2e.test", "dave@e2e.test", "todd@e2e.test", "erin@e2e.test", "frank@e2e.test"].map((e) => ({ userId: id(e), startDate: "2026-11-01" })),

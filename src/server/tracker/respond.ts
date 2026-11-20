@@ -9,11 +9,12 @@ const STATUS: Record<TrackerError, number> = {
   before_start: 400,
   in_future: 400,
   locked: 409,
+  not_started_yet: 409,
 };
 
 /** Own-data payload: the log goes through the privateJourney projection (which re-checks permission). */
 export function trackerPayload(actor: Actor, result: DayResponse) {
-  if (!result.ok) return { status: STATUS[result.error], body: { error: result.error } as const };
+  if (!result.ok) return { status: STATUS[result.error], body: { error: result.error, ...(result.startDate && { startDate: result.startDate }) } as const };
   const { row, ...rest } = result.data;
   return { status: 200, body: { ...rest, log: row ? privateJourney(actor, actor.id, [row]).logs[0] : null } };
 }
