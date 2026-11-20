@@ -1,6 +1,7 @@
+import { randomBytes } from "node:crypto";
 import nodemailer from "nodemailer";
 
-export type Email = { to: string; subject: string; text: string };
+export type Email = { to: string; subject: string; text: string; html?: string };
 export type Mailer = { send(message: Email): Promise<void> };
 
 /** Dev/test mailer: logs and keeps messages in memory. Never used in production. */
@@ -14,11 +15,11 @@ const devMailer: Mailer = {
 
 function resendMailer(apiKey: string, from: string): Mailer {
   return {
-    async send({ to, subject, text }) {
+    async send({ to, subject, text, html }) {
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ from, to, subject, text }),
+        body: JSON.stringify({ from, to, subject, text, ...(html && { html }) }),
       });
       if (!res.ok) throw new Error(`Resend responded ${res.status}`);
     },
@@ -36,11 +37,11 @@ export function parseSender(from: string): { name?: string; email: string } {
 function brevoMailer(apiKey: string, from: string): Mailer {
   const sender = parseSender(from);
   return {
-    async send({ to, subject, text }) {
+    async send({ to, subject, text, html }) {
       const res = await fetch("https://api.brevo.com/v3/smtp/email", {
         method: "POST",
         headers: { "api-key": apiKey, "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ sender, to: [{ email: to }], subject, textContent: text }),
+        body: JSON.stringify({ sender, to: [{ email: to }], subject, textContent: text, ...(html && { htmlContent: html }) }),
       });
       if (!res.ok) throw new Error(`Brevo responded ${res.status}`);
     },
@@ -65,19 +66,20 @@ const base64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const oneLine = (s: string) => s.replace(/[\r\n]+/g, " ").trim(); // no header injection through subject/address
 const encodeHeader = (s: string) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${base64(s)}?=`);
 
-/** RFC 822 plain-text message, as the Gmail API wants it (base64url of the whole thing). */
-export function buildRawMessage(from: string, { to, subject, text }: Email): string {
-  const body = base64(text).replace(/.{1,76}/g, "$&\r\n");
-  const message = [
-    `From: ${oneLine(from)}`,
-    `To: ${oneLine(to)}`,
-    `Subject: ${encodeHeader(oneLine(subject))}`,
-    "MIME-Version: 1.0",
-    "Content-Type: text/plain; charset=UTF-8",
-    "Content-Transfer-Encoding: base64",
-    "",
-    body,
-  ].join("\r\n");
+const wrap76 = (b64: string) => b64.replace(/.{1,76}/g, "$&\r\n");
+
+/** RFC 822 message for the Gmail API (base64url of the whole thing). With `html` it is multipart/alternative. */
+export function buildRawMessage(from: string, { to, subject, text, html }: Email): string {
+  const head = [`From: ${oneLine(from)}`, `To: ${oneLine(to)}`, `Subject: ${encodeHeader(oneLine(subject))}`, "MIME-Version: 1.0"];
+  let message: string;
+  if (html) {
+    const boundary = `cadence-${randomBytes(12).toString("hex")}`;
+    const part = (type: string, content: string) =>
+      [`--${boundary}`, `Content-Type: ${type}; charset=UTF-8`, "Content-Transfer-Encoding: base64", "", wrap76(base64(content))].join("\r\n");
+    message = [...head, `Content-Type: multipart/alternative; boundary="${boundary}"`, "", part("text/plain", text), part("text/html", html), `--${boundary}--`, ""].join("\r\n");
+  } else {
+    message = [...head, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", wrap76(base64(text))].join("\r\n");
+  }
   return Buffer.from(message, "utf8").toString("base64url");
 }
 
@@ -126,8 +128,8 @@ function smtpMailer(env: MailEnv & { SMTP_USER: string; SMTP_PASS: string; EMAIL
     auth: { user: env.SMTP_USER, pass: env.SMTP_PASS.replace(/\s/g, "") }, // Google shows app passwords in groups of four
   });
   return {
-    async send({ to, subject, text }) {
-      await transport.sendMail({ from: env.EMAIL_FROM, to, subject, text });
+    async send({ to, subject, text, html }) {
+      await transport.sendMail({ from: env.EMAIL_FROM, to, subject, text, html });
     },
   };
 }

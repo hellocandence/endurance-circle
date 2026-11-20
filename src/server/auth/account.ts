@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/server/db/client";
 import { bodyMetrics, profiles, sessions, users } from "@/server/db/schema";
 import type { Mailer } from "@/server/email";
+import { alreadyRegisteredEmail, resetEmail, verifyEmailMessage } from "@/server/email/templates";
 import { hashPassword, passwordProblem } from "./password";
 import { consumeToken, issueToken } from "./tokens";
 
@@ -34,11 +35,7 @@ export async function createMemberRow(
 
 export async function sendVerification(db: Db, mailer: Mailer, email: string, now?: Date) {
   const token = await issueToken(db, "verify", email, now);
-  await mailer.send({
-    to: email,
-    subject: "Verify your Cadence email",
-    text: `Welcome to Cadence.\n\nConfirm your email: ${baseUrl()}/verify?token=${token}\n\nThis link works once and expires in 24 hours.`,
-  });
+  await mailer.send({ to: email, ...verifyEmailMessage({ url: `${baseUrl()}/verify?token=${token}` }) });
 }
 
 /**
@@ -80,11 +77,7 @@ export async function requestPasswordReset(db: Db, mailer: Mailer, rawEmail: str
   const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (!user || user.disabled) return;
   const token = await issueToken(db, "reset", email, now);
-  await mailer.send({
-    to: email,
-    subject: "Reset your Cadence password",
-    text: `Reset your password: ${baseUrl()}/reset?token=${token}\n\nThis link works once and expires in 30 minutes. If you did not ask for it, ignore this email.`,
-  });
+  await mailer.send({ to: email, ...resetEmail({ url: `${baseUrl()}/reset?token=${token}` }) });
 }
 
 export async function resetPassword(
@@ -111,9 +104,5 @@ export async function resetPassword(
 
 /** Sent instead of revealing "email already registered" to whoever filled in the sign-up form. */
 export async function notifyAlreadyRegistered(mailer: Mailer, email: string) {
-  await mailer.send({
-    to: normalize(email),
-    subject: "You already have a Cadence account",
-    text: `Someone used an invite to sign up with this email, but it already has a Cadence account.\n\nSign in: ${baseUrl()}/login\nForgot your password? ${baseUrl()}/forgot\n\nIf this was not you, you can ignore this email.`,
-  });
+  await mailer.send({ to: normalize(email), ...alreadyRegisteredEmail({ loginUrl: `${baseUrl()}/login`, forgotUrl: `${baseUrl()}/forgot` }) });
 }

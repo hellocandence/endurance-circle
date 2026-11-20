@@ -5,6 +5,7 @@ import { createInvite, listInvites, revokeInvite } from "@/server/auth/invites";
 import { getDb } from "@/server/db";
 import { users } from "@/server/db/schema";
 import { getMailer } from "@/server/email";
+import { inviteEmail } from "@/server/email/templates";
 import { withAuth } from "@/server/rbac/guard";
 import { log } from "@/server/log";
 import { eq } from "drizzle-orm";
@@ -36,11 +37,7 @@ export const POST = withAuth({ action: "invite", resource: () => ({ kind: "invit
   if (!email) return NextResponse.json({ id: invite.id, url: inviteUrl(invite.token), expiresAt: invite.expiresAt }, { status: 201 });
 
   try {
-    await getMailer().send({
-      to: email,
-      subject: `${user.name} invited you to Cadence`,
-      text: `${user.name} invited you to join their circle on Cadence.\n\nOpen this link to create your account (it works for ${email} only, once, and expires in 7 days):\n${inviteUrl(invite.token)}\n\nYou can sign up with a password or with Google.`,
-    });
+    await getMailer().send({ to: email, ...inviteEmail({ inviterName: user.name, email, url: inviteUrl(invite.token) }) });
   } catch (err) {
     log.error("invite email failed", err);
     await revokeInvite(db, invite.id); // nobody has the link, so do not leave a live invite behind

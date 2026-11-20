@@ -6,6 +6,7 @@ import { changePassword } from "@/server/auth/security";
 import { sessionCookie } from "@/server/auth/session-config";
 import { getDb } from "@/server/db";
 import { getMailer } from "@/server/email";
+import { passwordChangedEmail } from "@/server/email/templates";
 import { limits } from "@/server/http/limits";
 import { tooManyRequests } from "@/server/http/rate-limit";
 import { withAuth } from "@/server/rbac/guard";
@@ -36,11 +37,7 @@ export const POST = withAuth(
 
     after(async () => {
       try {
-        await getMailer().send({
-          to: user.email,
-          subject: "Your Cadence password was changed",
-          text: "Your Cadence password was just changed and your other devices were signed out.\n\nIf this was not you, reset your password right away from the sign-in page.",
-        });
+        await getMailer().send({ to: user.email, ...passwordChangedEmail({ forgotUrl: `${(process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "")}/forgot` }) });
       } catch (err) {
         log.error("password-change notice failed", err);
       }
