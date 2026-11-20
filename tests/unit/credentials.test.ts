@@ -45,11 +45,11 @@ describe("loginWithCredentials", () => {
     expect(await ctx.db.select().from(t.sessions)).toHaveLength(0);
   });
 
-  it("correct password creates a 30-day database session readable by the Auth.js adapter", async () => {
+  it("correct password creates a 90-day database session readable by the Auth.js adapter", async () => {
     const now = new Date("2026-11-20T10:00:00Z");
     const r = await loginWithCredentials(db(), { email: " OK@Example.com ", password: PASSWORD, now });
     if (!r.ok) throw new Error("expected success");
-    expect(r.expires.getTime() - now.getTime()).toBe(30 * 24 * 3600 * 1000);
+    expect(r.expires.getTime() - now.getTime()).toBe(90 * 24 * 3600 * 1000);
 
     const rows = await ctx.db.select().from(t.sessions).where(eq(t.sessions.sessionToken, r.sessionToken));
     expect(rows).toHaveLength(1);

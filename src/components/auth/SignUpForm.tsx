@@ -48,6 +48,12 @@ export function SignUpForm({ token, googleEnabled, lockedEmail = null }: { token
   }
   return (
     <>
+      {googleEnabled && (
+        <>
+          <GoogleButton inviteToken={token} loginHint={lockedEmail ?? undefined} label="Continue with Google" />
+          <p className="text-center text-sm text-ink-muted">or create an account with a password</p>
+        </>
+      )}
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Field label="Your name" name="name" autoComplete="name" maxLength={80} required />
         {lockedEmail ? (
@@ -61,12 +67,6 @@ export function SignUpForm({ token, googleEnabled, lockedEmail = null }: { token
           {busy ? "Creating account…" : "Create account"}
         </GlassButton>
       </form>
-      {googleEnabled && (
-        <>
-          <p className="text-center text-sm text-ink-muted">or</p>
-          <GoogleButton inviteToken={token} loginHint={lockedEmail ?? undefined} label="Sign up with Google" />
-        </>
-      )}
     </>
   );
 }

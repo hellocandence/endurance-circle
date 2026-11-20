@@ -58,6 +58,12 @@ export function LoginForm({ next, authError, googleEnabled }: { next?: string; a
 
   return (
     <>
+      {googleEnabled && (
+        <>
+          <GoogleButton label="Continue with Google" />
+          <p className="text-center text-sm text-ink-muted">or sign in with email</p>
+        </>
+      )}
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Field label="Email" name="email" type="email" autoComplete="email" inputMode="email" required />
         <PasswordField label="Password" name="password" autoComplete="current-password" required />
@@ -77,12 +83,6 @@ export function LoginForm({ next, authError, googleEnabled }: { next?: string; a
           Add Cadence to your phone
         </Link>
       </form>
-      {googleEnabled && (
-        <>
-          <p className="text-center text-sm text-ink-muted">or</p>
-          <GoogleButton label="Continue with Google" />
-        </>
-      )}
     </>
   );
 }

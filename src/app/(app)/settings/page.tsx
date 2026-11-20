@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BodyLimitsForm } from "@/components/settings/BodyLimitsForm";
 import { PhotoUploader } from "@/components/settings/PhotoUploader";
+import { LogoutButton } from "@/components/settings/LogoutButton";
 import { SecurityForm } from "@/components/settings/SecurityForm";
 import { AdminPanel } from "@/components/settings/AdminPanel";
 import { ProfileForm } from "@/components/settings/ProfileForm";
@@ -41,6 +42,7 @@ export default async function SettingsPage() {
       <BodyLimitsForm body={body} />
       <SecurityForm hasPassword={passwordHash !== null} />
       {admin && <AdminPanel invites={admin.invites} members={admin.members} meId={actor.id} />}
+      <LogoutButton />
     </div>
   );
 }

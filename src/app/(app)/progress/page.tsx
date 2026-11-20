@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ProgressList } from "@/components/ProgressList";
 import { TrendChart } from "@/components/progress/TrendChart";
@@ -17,9 +18,12 @@ export default async function ProgressPage() {
   const hasTrend = trend.some((p) => p.pct !== null);
   return (
     <div className="flex flex-col gap-4">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">Progress</h1>
-        <p className="text-ink-muted">Completed days out of days so far. Today counts once it is done. Tap a name for the full picture.</p>
+      <header className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Progress</h1>
+          <p className="text-ink-muted">How everyone is doing so far. Tap a name for the full picture.</p>
+        </div>
+        <Link href="/progress/share" className="glass-focus hover-lift shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-glass-press hover:bg-accent-strong">Share story</Link>
       </header>
       {hasTrend && (
         <GlassCard className="flex flex-col gap-2 p-4">

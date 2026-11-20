@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createAdapter } from "@/server/auth/adapter";
 import { createSession, loginWithCredentials } from "@/server/auth/credentials";
 import { hashPassword } from "@/server/auth/password";
-import { changePassword, signOutEverywhere } from "@/server/auth/security";
+import { changePassword, endSession, signOutEverywhere } from "@/server/auth/security";
 import * as t from "@/server/db/schema";
 import { makeTestDb } from "./helpers/db";
 
@@ -87,5 +87,19 @@ describe("signOutEverywhere", () => {
     expect(await adapter.getSessionAndUser!(a1.sessionToken)).toBeNull();
     expect(await adapter.getSessionAndUser!(a2.sessionToken)).toBeNull();
     expect(await adapter.getSessionAndUser!(g1.sessionToken)).not.toBeNull();
+  });
+});
+
+describe("endSession", () => {
+  it("ends only the given session of that member", async () => {
+    const phone = await createSession(db(), userId);
+    const laptop = await createSession(db(), userId);
+    const bobs = await createSession(db(), otherId);
+    expect(await endSession(db(), userId, phone.sessionToken)).toBe(true);
+    const adapter = createAdapter(db());
+    expect(await adapter.getSessionAndUser!(phone.sessionToken)).toBeNull();
+    expect(await adapter.getSessionAndUser!(laptop.sessionToken)).not.toBeNull(); // other devices stay signed in
+    expect(await endSession(db(), userId, bobs.sessionToken)).toBe(false); // someone else's session is untouchable
+    expect(await adapter.getSessionAndUser!(bobs.sessionToken)).not.toBeNull();
   });
 });

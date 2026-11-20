@@ -34,6 +34,12 @@ export async function changePassword(
 }
 
 /** End every session the member has, on every device (including this one). */
+/** Ends only the session behind this browser's cookie (other devices stay signed in). */
+export async function endSession(db: Db, userId: string, sessionToken: string): Promise<boolean> {
+  const gone = await db.delete(sessions).where(and(eq(sessions.userId, userId), eq(sessions.sessionToken, sessionToken))).returning({ id: sessions.id });
+  return gone.length > 0;
+}
+
 export async function signOutEverywhere(db: Db, userId: string): Promise<number> {
   const gone = await db.delete(sessions).where(eq(sessions.userId, userId)).returning({ id: sessions.id });
   return gone.length;

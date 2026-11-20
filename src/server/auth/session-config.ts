@@ -1,4 +1,4 @@
-export const SESSION_MAX_AGE = 30 * 24 * 60 * 60; // 30 days, rolling (PRD F-01)
+export const SESSION_MAX_AGE = 90 * 24 * 60 * 60; // 90 days of inactivity, rolling: the middleware re-issues the cookie on every visit, so installed apps stay signed in (PRD F-01 said 30)
 export const SESSION_UPDATE_AGE = 24 * 60 * 60; // push expiry forward at most once a day
 
 /** Auth.js cookie name: the __Secure- prefix is used whenever the public URL is https. */

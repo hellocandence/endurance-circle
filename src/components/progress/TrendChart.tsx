@@ -2,7 +2,7 @@ import type { TrendPoint } from "@/server/dashboard/analytics";
 
 const W = 340;
 const H = 130;
-const L = 28;
+const L = 40;
 const R = 8;
 const TOP = 10;
 const BASE = 100;

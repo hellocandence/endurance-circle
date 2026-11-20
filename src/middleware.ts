@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { INVITE_COOKIE } from "@/server/auth/invite-cookie";
+import { SESSION_MAX_AGE, sessionCookie } from "@/server/auth/session-config";
 import { buildCsp, newNonce } from "@/server/http/security-headers";
 
 /**
@@ -26,6 +27,14 @@ export function middleware(req: NextRequest) {
   }
 
   if (req.cookies.has(INVITE_COOKIE)) res.cookies.set(INVITE_COOKIE, "", { path: "/", maxAge: 0 });
+
+  // Rolling session: Server Components cannot set cookies, so Auth.js extends the session in the database but
+  // the browser's cookie would still expire at its original date. Re-issue it with a fresh expiry on every visit.
+  if (!isCallback) {
+    const { name, secure } = sessionCookie();
+    const token = req.cookies.get(name)?.value;
+    if (token) res.cookies.set(name, token, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: SESSION_MAX_AGE });
+  }
   return res;
 }
 

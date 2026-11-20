@@ -1,6 +1,6 @@
 import { expect, test, type Browser } from "@playwright/test";
 import { E2E_PASSWORD } from "./setup/constants";
-import { loginAs, MONDAY } from "./helpers";
+import { hydrated, loginAs, MONDAY } from "./helpers";
 
 const NEW = "a-brand-new-password-9";
 const device = async (browser: Browser, email: string) => {
@@ -87,4 +87,37 @@ test("Settings: change password and sign out of all devices", async ({ page }) =
   await page.getByRole("button", { name: "Yes, sign out everywhere" }).click();
   await page.waitForURL("**/login");
   expect((await page.request.get("/api/me")).status()).toBe(401);
+});
+
+test("Log out at the bottom of Settings ends this device only", async ({ browser }) => {
+  const base = test.info().project.use.baseURL;
+  const open = async () => {
+    const ctx = await browser.newContext({ baseURL: base });
+    const page = await ctx.newPage();
+    await loginAs(page, "bob@e2e.test", MONDAY);
+    return { ctx, page };
+  };
+  const phone = await open();
+  const laptop = await open();
+  await phone.page.goto("/settings");
+  await hydrated(phone.page);
+  const logout = phone.page.getByRole("button", { name: "Log out" });
+  await expect(logout).toBeVisible();
+  // it is the last thing on the page
+  expect(await phone.page.locator("main button, main a").last().innerText()).toBe("Log out");
+  await logout.click();
+  await phone.page.waitForURL("**/login");
+  expect((await phone.page.request.get("/api/me")).status()).toBe(401);
+  expect((await laptop.page.request.get("/api/me")).status()).toBe(200); // the other device is untouched
+  await phone.ctx.close();
+  await laptop.ctx.close();
+});
+
+test("the session cookie is re-issued with a fresh 90-day expiry on every visit (installed apps stay signed in)", async ({ page }) => {
+  await loginAs(page, "bob@e2e.test", MONDAY);
+  await page.goto("/dashboard");
+  const cookie = (await page.context().cookies()).find((c) => c.name.endsWith("authjs.session-token"))!;
+  const days = (cookie.expires - Date.now() / 1000) / 86400;
+  expect(days).toBeGreaterThan(89);
+  expect(days).toBeLessThanOrEqual(90.1);
 });

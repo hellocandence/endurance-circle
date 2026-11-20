@@ -50,6 +50,7 @@ export function InstallGuide() {
       <li>Tap the <strong>Share</strong> button (the square with an arrow pointing up) in the toolbar.</li>
       <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
       <li>Tap <strong>Add</strong>. Cadence now opens from your home screen like any other app.</li>
+      <li>Open Cadence from your home screen and <strong>sign in once there</strong> (it is separate from Safari). You then stay signed in as long as you open it at least every few weeks.</li>
     </Steps>
   );
   const android = (
@@ -57,6 +58,7 @@ export function InstallGuide() {
       <li>Open Cadence in <strong>Chrome</strong>.</li>
       <li>Tap <strong>Install app</strong> below, or open the Chrome menu (three dots) and choose <strong>Install app</strong> (sometimes called <strong>Add to Home screen</strong>).</li>
       <li>Confirm. Cadence now opens from your home screen.</li>
+      <li>Open it from your home screen and sign in if asked. You then stay signed in as long as you open it at least every few weeks.</li>
     </Steps>
   );
 

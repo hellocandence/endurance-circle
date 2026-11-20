@@ -41,6 +41,9 @@ export default async function MemberProgressPage({ params }: { params: Promise<{
           {member.name}
           {isMe && <span className="ml-2 rounded-full bg-white/70 px-2 py-0.5 align-middle text-xs font-medium text-accent-strong">You</span>}
         </h1>
+        {isMe && member.programme && (
+          <Link href="/progress/share" className="glass-focus hover-lift mt-2 inline-block rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-glass-press hover:bg-accent-strong">Share story</Link>
+        )}
         <p className="text-ink-muted">
           {member.programme && member.dayNumber ? `Day ${member.dayNumber} of ${member.programme.totalDays}` : "Hasn't started the programme yet."}
         </p>
