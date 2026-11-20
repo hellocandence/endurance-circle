@@ -16,6 +16,7 @@ const filled = (page: Page) =>
 
 test("a signed-out visitor is sent to the login page", async ({ page }) => {
   await page.goto("/today");
+  await hydrated(page);
   await page.waitForURL("**/login");
 });
 
@@ -25,6 +26,7 @@ test.describe("normal day (Monday, day 23)", () => {
   test("shows the day, the required tasks and the protein target", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     expect(page.viewportSize()!.width).toBe(375);
 
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 23");
@@ -43,6 +45,7 @@ test.describe("normal day (Monday, day 23)", () => {
   test("the progress ring animates as tasks are completed", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     expect(await filled(page)).toBe(0);
 
     await page.getByRole("button", { name: "Log 5 km" }).click();
@@ -60,7 +63,8 @@ test.describe("normal day (Monday, day 23)", () => {
   test("respects reduced motion (the ring jumps straight to its value)", async ({ page }) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await loginAs(page, "todd@e2e.test", MONDAY);
-    await page.goto("/today"); // run (10%) was saved by the previous test
+    await page.goto("/today");
+    await hydrated(page); // run (10%) was saved by the previous test
     await expect(ring(page)).toHaveAttribute("aria-valuenow", "10");
     await page.getByRole("switch", { name: /Warm-up/ }).first().click();
     await expect(ring(page)).toHaveAttribute("aria-valuenow", "20");
@@ -71,6 +75,7 @@ test.describe("normal day (Monday, day 23)", () => {
   test("completing everything completes the day, and it persists across reloads", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     await page.getByRole("button", { name: "Log 5 km" }).click();
     for (const name of [/Warm-up$/, /Cool-down$/, /Electrolytes/, /Committed or opened a PR/]) {
       const sw = page.getByRole("switch", { name });
@@ -90,6 +95,8 @@ test.describe("normal day (Monday, day 23)", () => {
     await waitSaved(page);
 
     await page.reload();
+
+    await hydrated(page);
     await expect(page.getByRole("status").filter({ hasText: "Day complete" })).toBeVisible();
     await expect(page.getByLabel("One useful, implementable tip")).toHaveValue("Use partial indexes for hot queries");
     await expect(page.getByRole("spinbutton", { name: "Protein", exact: true })).toHaveValue("84");
@@ -98,18 +105,21 @@ test.describe("normal day (Monday, day 23)", () => {
   test("public and private notes are labelled honestly and persist", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     await expect(page.getByText("Public: everyone in the circle sees this line.")).toBeVisible();
     await expect(page.getByText("Visible to you and the circle owner only.")).toBeVisible();
     await page.getByLabel("Update for the circle").fill("Day 23 done");
     await page.getByLabel("Private note").fill("knee felt tight");
     await waitSaved(page);
     await page.reload();
+    await hydrated(page);
     await expect(page.getByLabel("Private note")).toHaveValue("knee felt tight");
   });
 
   test("edits made offline are kept, shown with a banner, and sent when the connection returns", async ({ page, context }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     await expect(page.getByLabel("Private note")).toBeVisible();
     await context.setOffline(true);
     await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toBeVisible();
@@ -124,6 +134,7 @@ test.describe("normal day (Monday, day 23)", () => {
     await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toHaveCount(0);
     expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("cadence:pending:")))).toBe(false);
     await page.reload();
+    await hydrated(page);
     await expect(page.getByLabel("Private note")).toHaveValue("typed on the train");
     await expect(page.getByLabel("Update for the circle")).toHaveValue("offline line");
   });
@@ -161,6 +172,7 @@ test.describe("Sunday", () => {
   test("stretching is required, running and warm-ups are not (AT-09)", async ({ page }) => {
     await loginAs(page, "owner@e2e.test", SUNDAY);
     await page.goto("/today");
+    await hydrated(page);
     await expect(page.getByText("Sunday: recovery day")).toBeVisible();
     await expect(page.getByRole("group", { name: /^Stretching/ })).toContainText("Required today");
     for (const title of ["Run", "Warm-up before the run", "Cool-down after the run"]) {
@@ -176,6 +188,7 @@ test.describe("Sunday", () => {
   test("a Sunday completes with stretching only", async ({ page }) => {
     await loginAs(page, "owner@e2e.test", SUNDAY);
     await page.goto("/today");
+    await hydrated(page);
     await page.getByRole("button", { name: "Log 25 min" }).click();
     await page.getByRole("switch", { name: /Electrolytes/ }).click();
     await page.getByRole("switch", { name: /Committed or opened a PR/ }).click();
@@ -192,6 +205,7 @@ test.describe("Sunday", () => {
 test("a new member can start their 75 Hard (Day 1 begins today)", async ({ page }) => {
   await loginAs(page, "fresh@e2e.test", MONDAY);
   await page.goto("/today");
+  await hydrated(page);
   await expect(page.getByRole("heading", { name: "Ready to begin?" })).toBeVisible();
   await page.getByRole("button", { name: "Start my 75 Hard" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 1");
@@ -209,6 +223,8 @@ test.describe("Day 75", () => {
     expect((await page.request.put("/api/tracker/2027-01-14", { data: done })).status()).toBe(200);
 
     await page.goto("/today");
+
+    await hydrated(page);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 75");
     const dialog = page.getByRole("dialog", { name: /Day 75/ });
     await expect(dialog).toBeVisible();
@@ -224,6 +240,7 @@ test.describe("Day 75", () => {
   test("it does not appear on day 74", async ({ page }) => {
     await loginAs(page, "bob@e2e.test", DAY_74);
     await page.goto("/today");
+    await hydrated(page);
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 74");
     await expect(page.getByRole("dialog")).toHaveCount(0);
   });
@@ -243,7 +260,9 @@ test.describe("celebrations and the circle's activity", () => {
     await expect(page.getByRole("list", { name: "Frank Member's tasks today" }).getByRole("listitem").filter({ hasText: "Run" })).toHaveAttribute("data-done", "true");
     await expect(page.getByRole("list", { name: "Today's activity" }).getByRole("listitem").filter({ hasText: "Run" })).toContainText("Frank");
 
-    await page.goto("/today"); // leave the shared seed as we found it
+    await page.goto("/today");
+
+    await hydrated(page); // leave the shared seed as we found it
     await hydrated(page);
     await page.getByLabel("Distance").fill("0");
     await waitSaved(page);
