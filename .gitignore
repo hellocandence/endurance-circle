@@ -60,3 +60,6 @@ docs/
 /public/sw.js.map
 /public/swe-worker-*.js
 /public/swe-worker-*.js.map
+
+# Playwright MCP scratch (screenshots, downloads)
+.playwright-mcp/
