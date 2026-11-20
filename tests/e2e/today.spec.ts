@@ -114,13 +114,31 @@ test.describe("normal day (Monday, day 23)", () => {
     await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toBeVisible();
     await page.getByLabel("Private note").fill("typed on the train");
     await expect(page.getByText(/You're offline\. Changes will save/)).toBeVisible();
-    expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("cadence:pending:")))).toBe(true);
+    expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("cadence:pending:")))).toBe(false); // private notes never reach storage
+    await page.getByLabel("Update for the circle").fill("offline line");
+    await expect.poll(() => page.evaluate(() => Object.entries(localStorage).filter(([k]) => k.startsWith("cadence:pending:")).map(([k, v]) => k + v).join())).toMatch(/cadence:pending:[0-9a-f-]{36}:\d{4}-\d\d-\d\d.*offline line/);
+    expect(await page.evaluate(() => JSON.stringify(localStorage))).not.toContain("typed on the train");
     await context.setOffline(false);
     await waitSaved(page);
     await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toHaveCount(0);
     expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("cadence:pending:")))).toBe(false);
     await page.reload();
     await expect(page.getByLabel("Private note")).toHaveValue("typed on the train");
+    await expect(page.getByLabel("Update for the circle")).toHaveValue("offline line");
+  });
+
+  test("another account's leftover offline edits are never replayed, and the login page clears them", async ({ page }) => {
+    await loginAs(page, "todd@e2e.test", MONDAY);
+    await page.goto("/today");
+    await expect(page.getByLabel("Private note")).toBeVisible();
+    await page.evaluate(() => localStorage.setItem("cadence:pending:00000000-0000-4000-8000-000000000000:2099-01-01", JSON.stringify({ updateText: "from someone else" })));
+    await page.reload();
+    await expect(page.getByLabel("Private note")).toBeVisible();
+    expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes("00000000-0000-4000")))).toEqual([]);
+    await page.evaluate(() => localStorage.setItem("cadence:pending:x:y", "{}"));
+    await page.context().clearCookies();
+    await page.goto("/login");
+    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith("cadence:pending:")).length)).toBe(0);
   });
 
   test("is keyboard accessible and passes axe (serious and critical)", async ({ page }) => {

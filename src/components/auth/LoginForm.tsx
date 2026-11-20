@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { GlassButton } from "@/components/ui";
 import { postJson } from "@/lib/api";
+import { clearPending } from "@/lib/pending-edits";
 import { safeNext } from "@/lib/safe-next";
 import { Field, FormMessage, PasswordField } from "./fields";
 import { GoogleButton } from "./GoogleButton";
@@ -14,6 +15,8 @@ const OAUTH_ERRORS: Record<string, string> = {
 };
 
 export function LoginForm({ next, authError, googleEnabled }: { next?: string; authError?: string; googleEnabled: boolean }) {
+  // Reaching the sign-in page means nobody is signed in: drop any unsent edits left on this device.
+  useEffect(() => clearPending(), []);
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(authError ? (OAUTH_ERRORS[authError] ?? "Sign-in failed. Please try again.") : null);

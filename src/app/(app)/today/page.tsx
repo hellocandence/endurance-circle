@@ -15,5 +15,5 @@ export default async function TodayPage() {
   if (!actor) redirect("/login");
   const { body } = trackerPayload(actor, await getToday(getDb(), actor.id, await requestNow()));
   if ("error" in body) return <StartProgram />;
-  return <TodayScreen key={body.date} data={body} />;
+  return <TodayScreen key={body.date} data={body} userId={actor.id} />;
 }

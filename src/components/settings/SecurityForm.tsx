@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { FormMessage, PasswordField } from "@/components/auth/fields";
 import { GlassButton } from "@/components/ui";
+import { clearPending } from "@/lib/pending-edits";
 import { postJson } from "@/lib/api";
 import { Section, type Status } from "./Section";
 
@@ -42,7 +43,10 @@ export function SecurityForm({ hasPassword }: { hasPassword: boolean }) {
   async function signOutAll() {
     setStatus({ kind: "saving" });
     const res = await postJson("/api/account/sign-out-all", {});
-    if (res.ok) window.location.assign("/login");
+    if (res.ok) {
+      clearPending();
+      window.location.assign("/login");
+    }
     else setStatus({ kind: "error", text: "Couldn't sign out. Please try again." });
   }
 

@@ -26,9 +26,9 @@ const fromLog = (log: TrackerPayload["log"]): Values => ({
 
 const textFields = new Set(["studyTopic", "techNote", "readingTitle", "updateText", "privateNotes"]);
 
-export function TodayScreen({ data }: { data: TrackerPayload }) {
+export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: string }) {
   const [values, setValues] = useState<Values>(() => fromLog(data.log));
-  const { status, message, save, retry } = useDaySaver(data.date);
+  const { status, message, save, retry } = useDaySaver(userId, data.date);
 
   function set<K extends keyof Values>(key: K, value: Values[K]) {
     setValues((v) => ({ ...v, [key]: value }));
