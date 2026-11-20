@@ -90,6 +90,7 @@ export const verificationTokens = pgTable(
 export const invites = pgTable("invites", {
   id: id(),
   tokenHash: text("token_hash").notNull().unique(), // store hash, never the raw token
+  email: text("email"), // lowercased; when set the invite only works for this address (null = legacy open link)
   createdBy: uuid("created_by").references(() => users.id),
   expiresAt: tstz("expires_at").notNull(),
   usedAt: tstz("used_at"),

@@ -1,8 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { FormMessage } from "@/components/auth/fields";
+import { useState, type FormEvent } from "react";
+import { Field, FormMessage } from "@/components/auth/fields";
 import { GlassButton } from "@/components/ui";
 import { sendJson } from "@/lib/api";
 import { Section } from "./Section";
@@ -19,6 +19,22 @@ export function AdminPanel({ invites, members, meId }: { invites: Invite[]; memb
   const [message, setMessage] = useState<{ kind: "success" | "error"; text: string } | null>(null);
   const [confirm, setConfirm] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState("");
+
+  async function sendEmailInvite(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    setMessage(null);
+    const res = await sendJson<{ error?: string }>("POST", "/api/admin/invites", { email: inviteEmail });
+    setBusy(false);
+    if (res.ok) {
+      setMessage({ kind: "success", text: `Invite emailed to ${inviteEmail.trim().toLowerCase()}.` });
+      setInviteEmail("");
+      router.refresh();
+    } else if (res.data.error === "already_member") setMessage({ kind: "error", text: "That email is already in the circle." });
+    else if (res.data.error === "email_failed") setMessage({ kind: "error", text: "Couldn't send the email. Check the mail settings and try again." });
+    else setMessage({ kind: "error", text: "Enter a valid email address." });
+  }
 
   async function create() {
     setBusy(true);
@@ -57,7 +73,11 @@ export function AdminPanel({ invites, members, meId }: { invites: Invite[]; memb
   return (
     <Section title="Circle admin" description="Only you, the owner, see this section.">
       <div className="flex flex-col gap-3">
-        <GlassButton onClick={create} disabled={busy} className="w-full">{busy ? "Creating…" : "Create invite link"}</GlassButton>
+        <form onSubmit={sendEmailInvite} className="flex flex-col gap-2">
+          <Field label="Invite by email" name="invite-email" type="email" inputMode="email" autoComplete="off" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} required hint="They get a link that only works for this address." />
+          <GlassButton type="submit" disabled={busy} className="w-full">{busy ? "Sending…" : "Send invite"}</GlassButton>
+        </form>
+        <GlassButton variant="secondary" onClick={create} disabled={busy} className="w-full">{busy ? "Creating…" : "Create invite link"}</GlassButton>
         {link && (
           <div className="glass flex flex-col gap-2 rounded-2xl p-3" role="group" aria-label="New invite link">
             <p className="text-sm font-medium">Share this link once. It works for one person and expires in 7 days. You won&apos;t see it again.</p>

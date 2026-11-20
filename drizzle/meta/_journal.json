@@ -15,6 +15,13 @@
       "when": 1795170580500,
       "tag": "0001_daily_log_counts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795182552079,
+      "tag": "0002_tidy_forgotten_one",
+      "breakpoints": true
     }
   ]
 }

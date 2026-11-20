@@ -12,13 +12,13 @@ const hashInvite = (token: string) => createHash("sha256").update(token).digest(
 const usable = (now: Date) => and(isNull(invites.usedAt), isNull(invites.revokedAt), gt(invites.expiresAt, now));
 
 /** Owner only (checked here as defence in depth; routes also go through the RBAC guard). */
-export async function createInvite(db: Db, createdBy: string, now = new Date()) {
+export async function createInvite(db: Db, createdBy: string, now = new Date(), email?: string) {
   const [actor] = await db.select({ role: users.role, disabled: users.disabled }).from(users).where(eq(users.id, createdBy)).limit(1);
   if (!actor || actor.disabled || actor.role !== "OWNER") throw new Error("Only the owner can create invites");
 
   const token = randomBytes(32).toString("base64url");
   const expiresAt = new Date(now.getTime() + INVITE_TTL_MS);
-  const [row] = await db.insert(invites).values({ tokenHash: hashInvite(token), createdBy, expiresAt }).returning({ id: invites.id });
+  const [row] = await db.insert(invites).values({ tokenHash: hashInvite(token), createdBy, expiresAt, email: email?.trim().toLowerCase() || null }).returning({ id: invites.id });
   return { id: row.id, token, expiresAt };
 }
 
@@ -44,14 +44,18 @@ export async function listInvites(db: Db, now = new Date()) {
   }));
 }
 
-/** Read-only check (does not consume). */
+/** Read-only lookup (does not consume). `email` is the address the invite was sent to, or null for an open link. */
+export async function getUsableInvite(db: Db, token: string, now = new Date()): Promise<{ email: string | null } | null> {
+  const [row] = await db.select({ email: invites.email }).from(invites).where(and(eq(invites.tokenHash, hashInvite(token)), usable(now))).limit(1);
+  return row ?? null;
+}
+
 export async function isInviteUsable(db: Db, token: string, now = new Date()): Promise<boolean> {
-  const [row] = await db.select({ id: invites.id }).from(invites).where(and(eq(invites.tokenHash, hashInvite(token)), usable(now))).limit(1);
-  return !!row;
+  return (await getUsableInvite(db, token, now)) !== null;
 }
 
 class Rollback extends Error {
-  constructor(readonly reason: "invalid_invite" | "email_taken") {
+  constructor(readonly reason: "invalid_invite" | "email_taken" | "email_mismatch") {
     super(reason);
   }
 }
@@ -69,14 +73,18 @@ async function claimInviteAndCreate(db: Db, token: string, member: Member, now: 
         .update(invites)
         .set({ usedAt: now })
         .where(and(eq(invites.tokenHash, hashInvite(token)), usable(now)))
-        .returning({ id: invites.id });
+        .returning({ id: invites.id, email: invites.email });
       if (!claimed) throw new Rollback("invalid_invite");
+      // An invite sent to an address only works for that address, whichever sign-up method is used.
+      if (claimed.email && claimed.email !== member.email) throw new Rollback("email_mismatch");
 
-      const userId = await createMemberRow(tx, member);
+      // Opening an emailed invite proves the inbox, so a password sign-up on it needs no separate verification mail.
+      const verified = member.emailVerified ?? (claimed.email ? now : null);
+      const userId = await createMemberRow(tx, { ...member, emailVerified: verified });
       if (!userId) throw new Rollback("email_taken");
 
       await tx.update(invites).set({ usedBy: userId }).where(eq(invites.id, claimed.id));
-      return { ok: true as const, userId };
+      return { ok: true as const, userId, verified: verified !== null };
     });
   } catch (err) {
     if (err instanceof Rollback) return { ok: false as const, reason: err.reason };
@@ -86,7 +94,7 @@ async function claimInviteAndCreate(db: Db, token: string, member: Member, now: 
 
 export type SignUpResult =
   | { ok: true; userId: string }
-  | { ok: false; reason: "invalid_invite" | "email_taken" | "weak_password"; message?: string };
+  | { ok: false; reason: "invalid_invite" | "email_taken" | "email_mismatch" | "weak_password"; message?: string };
 
 /** Email + password sign-up. Requires a valid invite (BR1); emails a verification link. */
 export async function signUpWithInvite(
@@ -100,8 +108,9 @@ export async function signUpWithInvite(
   const now = input.now ?? new Date();
   const email = input.email.trim().toLowerCase();
   const result = await claimInviteAndCreate(db, input.token, { email, name: input.name, passwordHash: await hashPassword(input.password), emailVerified: null }, now);
-  if (result.ok) await sendVerification(db, mailer, email, now);
-  return result;
+  if (!result.ok) return result;
+  if (!result.verified) await sendVerification(db, mailer, email, now);
+  return { ok: true, userId: result.userId };
 }
 
 /** Google sign-up for a new person: needs a valid invite; Google has verified the email already. */

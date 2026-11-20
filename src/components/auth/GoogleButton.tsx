@@ -7,7 +7,7 @@ import { postJson } from "@/lib/api";
 import { FormMessage } from "./fields";
 
 /** With `inviteToken` (sign-up), the invite is parked in a short-lived cookie first so the OAuth callback can use it. */
-export function GoogleButton({ inviteToken, label }: { inviteToken?: string; label: string }) {
+export function GoogleButton({ inviteToken, label, loginHint }: { inviteToken?: string; label: string; loginHint?: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,7 +22,7 @@ export function GoogleButton({ inviteToken, label }: { inviteToken?: string; lab
         return;
       }
     }
-    await signIn("google", { callbackUrl: "/dashboard" });
+    await signIn("google", { callbackUrl: "/dashboard" }, loginHint ? { login_hint: loginHint } : undefined);
   }
 
   return (

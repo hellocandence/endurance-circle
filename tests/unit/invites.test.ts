@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { decideGoogleSignIn } from "@/server/auth/google";
-import { createInvite, INVITE_TTL_MS, isInviteUsable, listInvites, revokeInvite, signUpWithInvite } from "@/server/auth/invites";
+import { createInvite, getUsableInvite, INVITE_TTL_MS, isInviteUsable, listInvites, revokeInvite, signUpWithInvite } from "@/server/auth/invites";
 import { loginWithCredentials } from "@/server/auth/credentials";
 import * as t from "@/server/db/schema";
 import type { Email, Mailer } from "@/server/email";
@@ -149,5 +149,53 @@ describe("Google sign-up with an invite (BR1)", () => {
     const { token } = await createInvite(db(), ownerId);
     expect(await decideGoogleSignIn(db(), { ...profile, email: "other@example.com", email_verified: false }, { inviteToken: token })).toBe(false);
     expect(await isInviteUsable(db(), token)).toBe(true);
+  });
+});
+
+describe("invites sent to an email address", () => {
+  const sentTo = (email: string) => sent.filter((m) => m.to === email);
+
+  it("remembers the address, lowercased, and exposes it to the sign-up page", async () => {
+    const { token } = await createInvite(db(), ownerId, new Date(), "  Bound.One@Example.com ");
+    expect(await getUsableInvite(db(), token)).toEqual({ email: "bound.one@example.com" });
+    const { token: open } = await createInvite(db(), ownerId);
+    expect(await getUsableInvite(db(), open)).toEqual({ email: null });
+  });
+
+  it("password sign-up on the right address is verified at once and sends no verification email", async () => {
+    const email = "bound.two@example.com";
+    const { token } = await createInvite(db(), ownerId, new Date(), email);
+    expect(await signup(token, { email })).toMatchObject({ ok: true });
+    const [user] = await ctx.db.select().from(t.users).where(eq(t.users.email, email));
+    expect(user.emailVerified).not.toBeNull();
+    expect(sentTo(email)).toHaveLength(0);
+    expect(await loginWithCredentials(db(), { email, password: PASSWORD })).toMatchObject({ ok: true });
+  });
+
+  it("refuses a different address for password sign-up and keeps the invite usable", async () => {
+    const { token } = await createInvite(db(), ownerId, new Date(), "bound.three@example.com");
+    expect(await signup(token, { email: "someone.else@example.com" })).toMatchObject({ ok: false, reason: "email_mismatch" });
+    expect(await isInviteUsable(db(), token)).toBe(true);
+  });
+
+  it("refuses a different Google account and accepts the invited one", async () => {
+    const email = "bound.four@example.com";
+    const { token } = await createInvite(db(), ownerId, new Date(), email);
+    expect(await decideGoogleSignIn(db(), { email: "other@example.com", email_verified: true }, { inviteToken: token })).toBe(false);
+    expect(await isInviteUsable(db(), token)).toBe(true);
+    expect(await decideGoogleSignIn(db(), { email: email.toUpperCase(), email_verified: true, name: "Four" }, { inviteToken: token })).toBe(true);
+    const [user] = await ctx.db.select().from(t.users).where(eq(t.users.email, email));
+    expect(user.emailVerified).not.toBeNull();
+  });
+
+  it("password and Google share one account: Google after a password sign-up keeps the password", async () => {
+    const email = "bound.five@example.com";
+    const { token } = await createInvite(db(), ownerId, new Date(), email);
+    await signup(token, { email });
+    expect(await decideGoogleSignIn(db(), { email, email_verified: true })).toBe(true);
+    const rows = await ctx.db.select().from(t.users).where(eq(t.users.email, email));
+    expect(rows).toHaveLength(1);
+    expect(rows[0].passwordHash).not.toBeNull();
+    expect(await loginWithCredentials(db(), { email, password: PASSWORD })).toMatchObject({ ok: true });
   });
 });
