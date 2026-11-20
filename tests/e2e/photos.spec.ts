@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import sharp from "sharp";
 import { expect, test, type Page } from "@playwright/test";
-import { loginAs, MONDAY } from "./helpers";
+import { loginAs, MONDAY, hydrated } from "./helpers";
 
 const png = (w: number, h: number) => sharp(randomBytes(w * h * 3), { raw: { width: w, height: h, channels: 3 } }).png().toBuffer();
 const meId = async (page: Page) => (await (await page.request.get("/api/me")).json()).id as string;
@@ -92,6 +92,7 @@ test.describe("settings: crop and upload", () => {
     });
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/settings");
+    await hydrated(page);
     expect(page.viewportSize()!.width).toBe(375);
 
     await page.getByLabel("Choose a photo").setInputFiles({ name: "wide.png", mimeType: "image/png", buffer: await png(1200, 600) });
@@ -115,6 +116,7 @@ test.describe("settings: crop and upload", () => {
   test("an unsupported file is explained", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/settings");
+    await hydrated(page);
     await page.getByLabel("Choose a photo").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("not an image") });
     await expect(page.locator("p[role=alert]")).toContainText("couldn't be read");
   });

@@ -1,24 +1,12 @@
 "use client";
 
-import { motion } from "framer-motion";
+import Link from "next/link";
+import { Bar } from "@/components/progress/Bar";
+import { MiniStrip } from "@/components/progress/MiniStrip";
 import { GlassCard } from "@/components/ui";
-import type { ProgressRow } from "@/server/dashboard/public";
+import type { OverviewRow } from "@/server/dashboard/analytics";
 
-function Bar({ label, value, detail }: { label: string; value: number; detail: string }) {
-  return (
-    <div>
-      <div className="mb-1 flex justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="text-ink-muted">{value}% · {detail}</span>
-      </div>
-      <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} className="h-3 overflow-hidden rounded-full bg-accent/15">
-        <motion.div className="h-full rounded-full bg-accent" initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
-      </div>
-    </div>
-  );
-}
-
-export function ProgressList({ rows, meId }: { rows: ProgressRow[]; meId: string }) {
+export function ProgressList({ rows, meId }: { rows: OverviewRow[]; meId: string }) {
   return (
     <ul className="flex flex-col gap-3" aria-label="Progress by member">
       {rows.map((r) => (
@@ -26,13 +14,18 @@ export function ProgressList({ rows, meId }: { rows: ProgressRow[]; meId: string
           <GlassCard role="group" aria-label={r.displayName} className="flex flex-col gap-3 p-4">
             <div className="flex items-baseline justify-between">
               <h2 className="font-semibold">
-                {r.displayName}
+                <Link href={`/progress/${r.id}`} className="glass-focus rounded-md underline-offset-4 hover:underline">{r.displayName}</Link>
                 {r.id === meId && <span className="ml-2 rounded-full bg-white/70 px-2 py-0.5 text-xs font-medium text-accent-strong">You</span>}
               </h2>
               <span className="text-sm text-ink-muted">{r.dayNumber ? `Day ${r.dayNumber}` : "Not started"}</span>
             </div>
             <Bar label="Overall" value={r.window.pct} detail={`${r.window.completed} of ${r.window.elapsed} days`} />
             <Bar label="Last 7 days" value={r.last7.pct} detail={`${r.last7.completed} of ${r.last7.elapsed} days`} />
+            <MiniStrip states={r.recent} />
+            <div className="flex items-center justify-between text-sm text-ink-muted">
+              <span>{r.streak} {r.streak === 1 ? "day" : "days"} streak</span>
+              <Link href={`/progress/${r.id}`} className="glass-focus rounded-full font-medium text-accent-strong underline-offset-4 hover:underline">See details</Link>
+            </div>
           </GlassCard>
         </li>
       ))}

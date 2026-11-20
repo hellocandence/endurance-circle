@@ -34,12 +34,12 @@ type Day = { date: string; completed: boolean };
  * Loads every enabled member with their programme and day records, using ONLY the public column lists
  * (publicUserColumns, publicLogColumns): never body_metrics, never private notes.
  */
-export async function loadCircle(db: Db, now = new Date()) {
+export async function loadCircle(db: Db, now = new Date(), only?: string) {
   const people = await db
     .select({ ...publicUserColumns, timeZone: users.timeZone, avatarPhotoId: profiles.avatarPhotoId }) // timeZone only picks "today"; it is never output
     .from(users)
     .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(and(eq(users.disabled, false), isNotNull(users.emailVerified))) // invited-but-unconfirmed people are not members yet
+    .where(and(eq(users.disabled, false), isNotNull(users.emailVerified), only ? eq(users.id, only) : undefined)) // invited-but-unconfirmed people are not members yet
     .orderBy(users.name);
   const ids = people.map((p) => p.id);
   if (ids.length === 0) return [];

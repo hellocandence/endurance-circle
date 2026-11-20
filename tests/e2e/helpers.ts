@@ -1,6 +1,9 @@
 import type { Page } from "@playwright/test";
 import { E2E_PASSWORD } from "./setup/constants";
 
+/** Pages stream in behind a loading skeleton, so wait for the network to settle (hydrated) before interacting. */
+export const hydrated = (page: Page) => page.waitForLoadState("networkidle");
+
 export const MONDAY = "2026-11-23T06:00:00Z"; // 11:30 in Kolkata
 export const SUNDAY = "2026-11-22T06:00:00Z";
 

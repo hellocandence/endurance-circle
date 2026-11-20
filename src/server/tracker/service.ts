@@ -14,9 +14,9 @@ export type Result<T> = ({ ok: true } & T) | { ok: false; error: TrackerError };
 /** Today and yesterday can be edited (so a late-night log still lands on the right day). */
 const EDITABLE_DAYS_BACK = 1;
 
-const n = (v: string | number | null | undefined) => (v === null || v === undefined ? 0 : Number(v));
+export const n = (v: string | number | null | undefined) => (v === null || v === undefined ? 0 : Number(v));
 
-const toInput = (r: LogRow): DayInput => ({
+export const toInput = (r: LogRow): DayInput => ({
   runKm: n(r.runKm),
   warmupPreDone: r.warmupPreDone,
   warmupPostDone: r.warmupPostDone,

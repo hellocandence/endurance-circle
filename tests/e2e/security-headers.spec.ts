@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAs, MONDAY } from "./helpers";
+import { loginAs, MONDAY, hydrated } from "./helpers";
 
 type Violation = { directive: string; blocked: string };
 
@@ -95,6 +95,7 @@ test("no screen triggers a CSP violation (the policy does not break the app)", a
   }
   // exercise the crop preview (blob: image) and Day-75 celebration, the two least ordinary pieces
   await page.goto("/settings");
+  await hydrated(page);
   const sharp = (await import("sharp")).default;
   const png = await sharp({ create: { width: 400, height: 300, channels: 3, background: "#4f46e5" } }).png().toBuffer();
   await page.getByLabel("Choose a photo").setInputFiles({ name: "p.png", mimeType: "image/png", buffer: png });

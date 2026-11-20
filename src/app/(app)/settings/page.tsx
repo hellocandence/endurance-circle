@@ -21,14 +21,16 @@ export const dynamic = "force-dynamic";
 export default async function SettingsPage() {
   const actor = await sessionActor();
   if (!actor) redirect("/login");
-  const profile = await getProfile(getDb(), actor.id);
-  const row = await getBodyRow(getDb(), actor.id);
-  const [{ passwordHash }] = await getDb().select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, actor.id)).limit(1);
+  const db = getDb();
+  const [profile, row, [{ passwordHash }], admin] = await Promise.all([
+    getProfile(db, actor.id),
+    getBodyRow(db, actor.id),
+    db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, actor.id)).limit(1),
+    // Circle admin data is only loaded for the owner (the API routes enforce it again).
+    actor.role === "OWNER" ? Promise.all([listInvites(db), listMembers(db)]).then(([invites, members]) => ({ invites, members })) : Promise.resolve(null),
+  ]);
   if (!profile || !row) redirect("/login");
   const body = bodyMetrics(actor, actor.id, row); // own data, through the projection
-
-  // Circle admin data is only loaded for the owner (the API routes enforce it again).
-  const admin = actor.role === "OWNER" ? { invites: await listInvites(getDb()), members: await listMembers(getDb()) } : null;
 
   return (
     <div className="flex flex-col gap-4">

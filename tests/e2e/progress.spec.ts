@@ -31,3 +31,36 @@ test("progress API and page list every member with server-computed percentages",
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes[0]?.html}`)).toEqual([]);
 });
+
+test("a member's progress page shows the full programme, and private stats only on your own", async ({ page }) => {
+  await loginAs(page, "alice@e2e.test", MONDAY);
+  await page.goto("/progress");
+  await page.getByRole("group", { name: "Bob Member" }).getByRole("link", { name: "Bob Member" }).click();
+  await expect(page).toHaveURL(/\/progress\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { name: "Bob Member", level: 1 })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Day by day" }).getByRole("listitem")).toHaveCount(75);
+  await expect(page.getByRole("img", { name: /^Completion by week/ })).toBeVisible();
+  await expect(page.getByText("Current streak")).toBeVisible();
+  // someone else's page: public numbers only
+  await expect(page.getByRole("region", { name: "Your private stats" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.goto("/progress");
+  await page.getByRole("group", { name: "Alice Member" }).getByRole("link", { name: "Alice Member" }).click();
+  await expect(page.getByRole("heading", { name: "Alice Member", level: 1 })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Your private stats" })).toBeVisible();
+  await page.waitForTimeout(1000);
+  const { violations } = await new AxeBuilder({ page }).analyze();
+  expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes[0]?.html}`)).toEqual([]);
+});
+
+test("the member progress page needs a session and ignores bad ids", async ({ page }) => {
+  await page.goto("/progress/00000000-0000-4000-8000-000000000000");
+  await expect(page).toHaveURL(/\/login/);
+  await loginAs(page, "alice@e2e.test", MONDAY);
+  // (the page streams behind a loading skeleton, so the status is already 200: check the 404 content)
+  await page.goto("/progress/not-a-uuid");
+  await expect(page.getByText("This page could not be found")).toBeVisible();
+  await page.goto("/progress/00000000-0000-4000-8000-000000000000");
+  await expect(page.getByText("This page could not be found")).toBeVisible();
+});

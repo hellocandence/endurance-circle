@@ -1,6 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
-import { loginAs, MONDAY, SUNDAY } from "./helpers";
+import { loginAs, MONDAY, SUNDAY, hydrated } from "./helpers";
 
 const ring = (page: Page) => page.getByRole("progressbar");
 const waitSaved = (page: Page) => expect(page.getByText("Saved", { exact: true })).toBeVisible();
@@ -130,9 +130,11 @@ test.describe("normal day (Monday, day 23)", () => {
   test("another account's leftover offline edits are never replayed, and the login page clears them", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     await expect(page.getByLabel("Private note")).toBeVisible();
     await page.evaluate(() => localStorage.setItem("cadence:pending:00000000-0000-4000-8000-000000000000:2099-01-01", JSON.stringify({ updateText: "from someone else" })));
     await page.reload();
+    await hydrated(page);
     await expect(page.getByLabel("Private note")).toBeVisible();
     expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes("00000000-0000-4000")))).toEqual([]);
     await page.evaluate(() => localStorage.setItem("cadence:pending:x:y", "{}"));
@@ -144,6 +146,7 @@ test.describe("normal day (Monday, day 23)", () => {
   test("is keyboard accessible and passes axe (serious and critical)", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
+    await hydrated(page);
     await page.getByLabel("Distance").focus();
     await page.keyboard.press("Tab");
     await expect(page.getByRole("button", { name: "Log 5 km" })).toBeFocused();
