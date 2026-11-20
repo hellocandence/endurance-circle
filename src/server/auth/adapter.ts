@@ -13,6 +13,11 @@ export function createAdapter(db: Db): Adapter {
 
   return {
     ...base,
+    // Sign-up is invite-only (BR1), so the adapter never creates users on its own. T024 creates them.
+    async createUser() {
+      throw new Error("User creation is invite-only");
+    },
+    getUserByEmail: (email) => base.getUserByEmail!(email.trim().toLowerCase()),
     // A disabled user has no session, even if a cookie issued before they were disabled still exists.
     async getSessionAndUser(sessionToken) {
       const found = await base.getSessionAndUser!(sessionToken);
