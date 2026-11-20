@@ -5,6 +5,25 @@ import type { DayPatch } from "@/server/tracker/schema";
 
 export type SaveStatus = "idle" | "saving" | "saved" | "error";
 
+// Unsent edits survive a closed tab or a long time offline. Only the member's own pending changes are
+// kept, and only until the server accepts them (the service worker still never caches API responses).
+const pendingKey = (date: string) => `cadence:pending:${date}`;
+const readPending = (date: string): DayPatch => {
+  try {
+    return JSON.parse(localStorage.getItem(pendingKey(date)) ?? "{}") as DayPatch;
+  } catch {
+    return {};
+  }
+};
+const writePending = (date: string, patch: DayPatch) => {
+  try {
+    if (Object.keys(patch).length === 0) localStorage.removeItem(pendingKey(date));
+    else localStorage.setItem(pendingKey(date), JSON.stringify(patch));
+  } catch {
+    // storage unavailable (private mode): edits are still kept in memory
+  }
+};
+
 /**
  * Debounced, ordered autosave for one day. Patches made while a request is in flight are merged and
  * sent afterwards; a failed patch is kept and retried with the next change or an explicit retry.
@@ -46,6 +65,7 @@ export function useDaySaver(date: string, delayMs = 500) {
       text = "You're offline. Changes will save when you're back.";
     }
     inFlight.current = false;
+    writePending(date, queue.current);
     setStatus(ok ? "saved" : "error");
     setMessage(ok ? null : text);
     if (ok && Object.keys(queue.current).length > 0) void flush();
@@ -54,11 +74,24 @@ export function useDaySaver(date: string, delayMs = 500) {
   const save = useCallback(
     (patch: DayPatch) => {
       queue.current = { ...queue.current, ...patch };
+      writePending(date, queue.current);
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void flush(), delayMs);
     },
-    [delayMs, flush],
+    [date, delayMs, flush],
   );
+
+  // Edits left over from an earlier visit (offline, closed tab) go out first; and again whenever we're back online.
+  useEffect(() => {
+    const pending = readPending(date);
+    if (Object.keys(pending).length > 0) {
+      queue.current = { ...pending, ...queue.current };
+      void flush();
+    }
+    const onOnline = () => void flush();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [date, flush]);
 
   // Don't lose edits when the tab is hidden or closed.
   useEffect(() => {

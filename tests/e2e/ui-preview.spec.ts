@@ -29,3 +29,19 @@ test.describe("/ui-preview", () => {
     expect(box!.width).toBeGreaterThan(viewport.width - 40);
   });
 });
+
+test.describe("hover (desktop pointer)", () => {
+  test.use({ hasTouch: false, isMobile: false, viewport: { width: 1280, height: 800 } });
+
+  test("interactive cards and buttons lift on hover", async ({ page }) => {
+    await page.goto("/ui-preview");
+    const translateOf = (loc: ReturnType<typeof page.locator>) => loc.evaluate((el) => getComputedStyle(el).translate);
+    for (const target of [page.getByRole("button", { name: "Primary" }), page.getByRole("button", { name: /Interactive card/ })]) {
+      await target.scrollIntoViewIfNeeded();
+      await page.mouse.move(1, 1);
+      await expect.poll(() => translateOf(target)).toBe("none");
+      await target.hover();
+      await expect.poll(() => translateOf(target)).toMatch(/-2px/);
+    }
+  });
+});

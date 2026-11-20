@@ -32,7 +32,7 @@ export function TabBar({ items, activeKey }: TabBarProps) {
               <Link
                 href={item.href}
                 aria-current={active ? "page" : undefined}
-                className="glass-focus relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium text-ink-muted aria-[current=page]:text-accent md:rounded-2xl"
+                className="glass-focus hover-tint relative flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-medium text-ink-muted aria-[current=page]:text-accent md:rounded-2xl"
               >
                 {active && (
                   <motion.span

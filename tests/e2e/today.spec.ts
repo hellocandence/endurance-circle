@@ -106,6 +106,23 @@ test.describe("normal day (Monday, day 23)", () => {
     await expect(page.getByLabel("Private note")).toHaveValue("knee felt tight");
   });
 
+  test("edits made offline are kept, shown with a banner, and sent when the connection returns", async ({ page, context }) => {
+    await loginAs(page, "todd@e2e.test", MONDAY);
+    await page.goto("/today");
+    await expect(page.getByLabel("Private note")).toBeVisible();
+    await context.setOffline(true);
+    await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toBeVisible();
+    await page.getByLabel("Private note").fill("typed on the train");
+    await expect(page.getByText(/You're offline\. Changes will save/)).toBeVisible();
+    expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("cadence:pending:")))).toBe(true);
+    await context.setOffline(false);
+    await waitSaved(page);
+    await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toHaveCount(0);
+    expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("cadence:pending:")))).toBe(false);
+    await page.reload();
+    await expect(page.getByLabel("Private note")).toHaveValue("typed on the train");
+  });
+
   test("is keyboard accessible and passes axe (serious and critical)", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");

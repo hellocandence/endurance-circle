@@ -62,6 +62,29 @@ body {
   }
 }
 
+/* Hover feedback only where a real pointer exists, so touch screens never get a "stuck" hover state. */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift {
+    transition:
+      translate 220ms var(--ease-out-soft),
+      box-shadow 220ms var(--ease-out-soft),
+      background-color 200ms ease-out;
+  }
+  .hover-lift:hover {
+    translate: 0 -2px; /* not "transform": Framer Motion owns the inline transform on cards and buttons */
+    box-shadow: 0 14px 40px rgb(49 46 129 / 0.18), inset 0 1px 0 rgb(255 255 255 / 0.95);
+  }
+  .hover-lift:active {
+    translate: 0 0;
+  }
+  .hover-tint {
+    transition: background-color 200ms ease-out, color 200ms ease-out;
+  }
+  .hover-tint:hover {
+    background-color: rgb(255 255 255 / 0.55);
+  }
+}
+
 /* Honour reduced motion for any CSS transition or animation. */
 @media (prefers-reduced-motion: reduce) {
   /* Framer Motion's entrance styles are rendered into the server HTML (the server cannot know this

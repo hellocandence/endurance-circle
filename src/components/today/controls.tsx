@@ -55,7 +55,7 @@ export function Toggle({ label, checked, onChange }: { label: string; checked: b
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`glass-focus flex min-h-12 w-full items-center justify-between rounded-2xl px-4 text-base font-medium transition-colors duration-200 ${checked ? "bg-emerald-700 text-white" : "glass text-ink"}`}
+      className={`glass-focus hover-lift flex min-h-12 w-full items-center justify-between rounded-2xl px-4 text-base font-medium transition-colors duration-200 ${checked ? "bg-emerald-700 text-white" : "glass text-ink"}`}
     >
       <span>{label}</span>
       <span aria-hidden="true">{checked ? "Done" : "Tap to mark"}</span>
@@ -65,7 +65,7 @@ export function Toggle({ label, checked, onChange }: { label: string; checked: b
 
 export function Chip({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="glass glass-focus min-h-10 rounded-full px-4 text-sm font-medium text-accent-strong">
+    <button type="button" onClick={onClick} className="glass glass-focus hover-lift min-h-10 rounded-full px-4 text-sm font-medium text-accent-strong">
       {children}
     </button>
   );

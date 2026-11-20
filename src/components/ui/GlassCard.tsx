@@ -19,7 +19,7 @@ export function GlassCard({ interactive = false, delay = 0, className = "", chil
       initial={reduce ? false : { opacity: 0, y: 12 }} // reduced motion: render in the final state from the first frame
       animate={{ opacity: 1, y: 0, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1], delay } }}
       whileTap={interactive ? { scale: 0.98, transition: { type: "spring", stiffness: 500, damping: 30 } } : undefined}
-      className={`glass rounded-(--radius-glass) p-5 ${interactive ? "cursor-pointer" : ""} ${className}`}
+      className={`glass rounded-(--radius-glass) p-5 ${interactive ? "hover-lift cursor-pointer" : ""} ${className}`}
       {...rest}
     >
       {children}
