@@ -28,6 +28,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
         ]
       : [],
   session: { strategy: "database", maxAge: SESSION_MAX_AGE, updateAge: SESSION_UPDATE_AGE },
+  pages: { signIn: "/login", error: "/login" }, // errors arrive as /login?error=...
   trustHost: true, // Render terminates TLS at its proxy; AUTH_URL pins the public origin
   callbacks: {
     async signIn({ account, profile }) {

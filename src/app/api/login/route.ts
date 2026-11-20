@@ -6,7 +6,7 @@ import { PASSWORD_MAX } from "@/server/auth/password";
 import { getDb } from "@/server/db";
 import { rejectUnsafeRequest } from "@/server/http/guards";
 import { limits } from "@/server/http/limits";
-import { clientIp, enforce } from "@/server/http/rate-limit";
+import { clientIp, enforce, enforcePeek } from "@/server/http/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -21,21 +21,25 @@ export async function POST(req: Request) {
 
   const ip = clientIp(req);
   const email = parsed.data.email.trim().toLowerCase();
-  const limited = enforce([
-    [limits.loginIp, ip],
-    [limits.loginIpEmail, `${ip}|${email}`],
-    [limits.loginEmail, email],
-  ]);
+  const pairKey = `${ip}|${email}`;
+  // Per-IP counts every request (cheap abuse guard). The per-account limits count FAILURES only, so
+  // someone's successful logins never lock them out (they are checked first, recorded after a failure).
+  const limited = enforce([[limits.loginIp, ip]]) ?? enforcePeek([[limits.loginIpEmail, pairKey], [limits.loginEmail, email]]);
   if (limited) return limited;
 
   const result = await loginWithCredentials(getDb(), parsed.data);
   if (!result.ok) {
+    if (result.reason === "invalid") {
+      // "unverified" means the password was right, so it is not a guessing attempt
+      limits.loginIpEmail.record(pairKey);
+      limits.loginEmail.record(email);
+    }
     return result.reason === "unverified"
       ? NextResponse.json({ error: "email_not_verified" }, { status: 403 })
       : NextResponse.json({ error: "invalid_credentials" }, { status: 401 });
   }
 
-  limits.loginIpEmail.reset(`${ip}|${email}`); // a correct password clears this address's failures for that account
+  limits.loginIpEmail.reset(pairKey); // a correct password clears this address's failures for that account
   const res = NextResponse.json({ ok: true });
   const cookie = sessionCookie();
   res.cookies.set(cookie.name, result.sessionToken, {

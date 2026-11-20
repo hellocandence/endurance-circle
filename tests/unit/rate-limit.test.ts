@@ -40,6 +40,18 @@ describe("createRateLimiter", () => {
   });
 });
 
+describe("peek / record (failure-only counters)", () => {
+  it("peek never counts, record does", () => {
+    const l = createRateLimiter({ limit: 2, windowMs: 10 * MIN });
+    for (let i = 0; i < 20; i++) expect(l.peek("k", i).allowed).toBe(true); // looking is free
+    l.record("k", 100);
+    expect(l.peek("k", 101).allowed).toBe(true);
+    l.record("k", 102);
+    expect(l.peek("k", 103)).toEqual({ allowed: false, retryAfterSec: Math.ceil((100 + 10 * MIN - 103) / 1000) });
+    expect(l.peek("k", 100 + 10 * MIN + 1).allowed).toBe(true); // first failure aged out
+  });
+});
+
 describe("enforce", () => {
   it("returns a 429 with Retry-After once any limiter trips", async () => {
     const l = createRateLimiter({ limit: 1, windowMs: 15 * MIN });
