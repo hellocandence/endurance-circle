@@ -3,6 +3,8 @@ import { z } from "zod";
 import { verifyEmail } from "@/server/auth/account";
 import { getDb } from "@/server/db";
 import { rejectUnsafeRequest } from "@/server/http/guards";
+import { limits } from "@/server/http/limits";
+import { clientIp, enforce } from "@/server/http/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,9 @@ export async function POST(req: Request) {
   if (unsafe) return unsafe;
   const parsed = z.object({ token: z.string().min(1).max(200) }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+
+  const limited = enforce([[limits.tokenIp, clientIp(req)]]);
+  if (limited) return limited;
   const ok = await verifyEmail(getDb(), parsed.data.token);
   return ok ? NextResponse.json({ ok: true }) : NextResponse.json({ error: "invalid_token" }, { status: 400 });
 }

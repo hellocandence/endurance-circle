@@ -1,10 +1,12 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { PASSWORD_MAX } from "@/server/auth/password";
-import { signUpWithInvite } from "@/server/auth/invites";
+import { handleSignUp } from "@/server/auth/signup-handler";
 import { getDb } from "@/server/db";
-import { getMailer } from "@/server/email";
+import { getMailer, type Mailer } from "@/server/email";
 import { rejectUnsafeRequest } from "@/server/http/guards";
+import { limits } from "@/server/http/limits";
+import { clientIp, enforce } from "@/server/http/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,15 +17,29 @@ const Body = z.object({
   name: z.string().trim().min(1).max(80),
 });
 
-// Public by design, but useless without a valid single-use invite token (BR1). Rate limiting: T025.
+// Public by design, but useless without a valid single-use invite token (BR1). Rate limited (T025).
+// Answers identically whether or not the email is already registered.
 export async function POST(req: Request) {
   const unsafe = rejectUnsafeRequest(req);
   if (unsafe) return unsafe;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
 
-  const result = await signUpWithInvite(getDb(), getMailer(), parsed.data);
-  if (result.ok) return NextResponse.json({ ok: true }, { status: 201 });
-  const status = result.reason === "email_taken" ? 409 : 400;
-  return NextResponse.json({ error: result.reason, message: result.message }, { status });
+  const limited = enforce([[limits.signupIp, clientIp(req)]]);
+  if (limited) return limited;
+
+  // Mail is sent after the response so timing does not depend on the outcome.
+  const mailer = getMailer();
+  const deferred: Mailer = {
+    send: async (m) =>
+      after(async () => {
+        try {
+          await mailer.send(m);
+        } catch (err) {
+          console.error("signup email failed:", err instanceof Error ? err.message : "unknown error");
+        }
+      }),
+  };
+  const { status, body } = await handleSignUp(getDb(), deferred, parsed.data);
+  return NextResponse.json(body, { status });
 }

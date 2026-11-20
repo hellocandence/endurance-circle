@@ -108,3 +108,12 @@ export async function resetPassword(
   await db.delete(sessions).where(eq(sessions.userId, user.id)); // sign out everywhere
   return { ok: true };
 }
+
+/** Sent instead of revealing "email already registered" to whoever filled in the sign-up form. */
+export async function notifyAlreadyRegistered(mailer: Mailer, email: string) {
+  await mailer.send({
+    to: normalize(email),
+    subject: "You already have a Cadence account",
+    text: `Someone used an invite to sign up with this email, but it already has a Cadence account.\n\nSign in: ${baseUrl()}/login\nForgot your password? ${baseUrl()}/forgot\n\nIf this was not you, you can ignore this email.`,
+  });
+}

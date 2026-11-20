@@ -35,3 +35,17 @@ test("sign-up and invite-start refuse bad invites", async ({ request }) => {
   expect((await request.post("/api/invite/start", { data: { token: "bogus" } })).status()).toBe(400);
   expect((await request.post("/api/signup", { data: { ...body, email: "nope" } })).status()).toBe(400);
 });
+
+test("the OAuth callback always expires the parked invite cookie", async ({ request }) => {
+  const res = await request.get("/api/auth/callback/google", { headers: { cookie: "cadence_invite=abc" }, maxRedirects: 0 });
+  const setCookie = res.headersArray().filter((h) => h.name.toLowerCase() === "set-cookie").map((h) => h.value).join("\n");
+  expect(setCookie).toMatch(/cadence_invite=;/);
+  expect(setCookie.toLowerCase()).toMatch(/max-age=0/);
+});
+
+test("sign-up answers the same for bad invites regardless of email", async ({ request }) => {
+  const headers = { "cf-connecting-ip": `10.9.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}` };
+  const a = await request.post("/api/signup", { headers, data: { token: "bogus", email: "a@example.com", password: "long-enough-password", name: "A" } });
+  const b = await request.post("/api/signup", { headers, data: { token: "bogus", email: "b@example.com", password: "long-enough-password", name: "B" } });
+  expect([a.status(), await a.json()]).toEqual([b.status(), await b.json()]);
+});

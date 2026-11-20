@@ -5,6 +5,8 @@ import { isInviteUsable } from "@/server/auth/invites";
 import { sessionCookie } from "@/server/auth/session-config";
 import { getDb } from "@/server/db";
 import { rejectUnsafeRequest } from "@/server/http/guards";
+import { limits } from "@/server/http/limits";
+import { clientIp, enforce } from "@/server/http/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +18,9 @@ export async function POST(req: Request) {
   if (unsafe) return unsafe;
   const parsed = z.object({ token: z.string().min(1).max(200) }).safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+
+  const limited = enforce([[limits.inviteStartIp, clientIp(req)]]);
+  if (limited) return limited;
 
   if (!(await isInviteUsable(getDb(), parsed.data.token))) {
     return NextResponse.json({ error: "invalid_invite" }, { status: 400 });

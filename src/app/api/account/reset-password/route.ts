@@ -4,6 +4,8 @@ import { resetPassword } from "@/server/auth/account";
 import { PASSWORD_MAX } from "@/server/auth/password";
 import { getDb } from "@/server/db";
 import { rejectUnsafeRequest } from "@/server/http/guards";
+import { limits } from "@/server/http/limits";
+import { clientIp, enforce } from "@/server/http/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +17,9 @@ export async function POST(req: Request) {
   if (unsafe) return unsafe;
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "invalid_input" }, { status: 400 });
+
+  const limited = enforce([[limits.tokenIp, clientIp(req)]]);
+  if (limited) return limited;
   const result = await resetPassword(getDb(), parsed.data);
   if (result.ok) return NextResponse.json({ ok: true });
   return NextResponse.json({ error: result.reason, message: result.message }, { status: 400 });
