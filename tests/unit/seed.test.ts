@@ -1,20 +1,17 @@
-import { PGlite } from "@electric-sql/pglite";
-import { vector } from "@electric-sql/pglite-pgvector";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import type { Db } from "@/server/db/client";
 import { seed } from "@/server/db/seed";
-import * as schema from "@/server/db/schema";
+import { makeTestDb, type RawSql } from "./helpers/db";
 
-let pg: PGlite;
-let db: ReturnType<typeof drizzle<typeof schema>>;
+let pg: RawSql;
+let db: Db;
+let close: () => Promise<void>;
 
 beforeAll(async () => {
-  pg = new PGlite({ extensions: { vector } });
-  db = drizzle(pg, { schema });
-  await migrate(db, { migrationsFolder: "drizzle" });
+  const ctx = await makeTestDb(); // PGlite by default, a real Postgres when TEST_DATABASE_URL is set
+  ({ pg, db, close } = ctx);
 });
-afterAll(() => pg.close());
+afterAll(() => close());
 
 const count = async (table: string) =>
   Number((await pg.query<{ n: string }>(`SELECT count(*) AS n FROM ${table}`)).rows[0].n);

@@ -1,10 +1,10 @@
 export type ApiResult<T = Record<string, unknown>> = { ok: boolean; status: number; data: T };
 
-/** POST JSON to our own API. Never throws: network failures come back as status 0. */
-export async function postJson<T = Record<string, unknown>>(url: string, body: unknown): Promise<ApiResult<T>> {
+/** Send JSON to our own API. Never throws: network failures come back as status 0. */
+export async function sendJson<T = Record<string, unknown>>(method: "POST" | "PUT" | "PATCH" | "DELETE", url: string, body: unknown): Promise<ApiResult<T>> {
   try {
     const res = await fetch(url, {
-      method: "POST",
+      method,
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
@@ -14,3 +14,6 @@ export async function postJson<T = Record<string, unknown>>(url: string, body: u
     return { ok: false, status: 0, data: {} as T };
   }
 }
+
+export const postJson = <T = Record<string, unknown>>(url: string, body: unknown) => sendJson<T>("POST", url, body);
+export const patchJson = <T = Record<string, unknown>>(url: string, body: unknown) => sendJson<T>("PATCH", url, body);

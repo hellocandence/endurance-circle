@@ -1,4 +1,5 @@
 import { existsSync } from "node:fs";
+import { log } from "@/server/log";
 import { createDb } from "./client";
 import { seed } from "./seed";
 
@@ -8,15 +9,13 @@ async function main() {
   const handle = createDb();
   try {
     const res = await seed(handle.db, { ownerEmail: process.env.OWNER_EMAIL ?? "" });
-    console.log(
-      `seed ok (${handle.kind}): owner ${res.ownerId}, commitment ${res.createdCommitment ? "created" : "already present"}`,
-    );
+    log.info("seed ok", { driver: handle.kind, ownerId: res.ownerId, commitment: res.createdCommitment ? "created" : "already present" });
   } finally {
     await handle.close();
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  log.error("seed failed", err);
   process.exit(1);
 });

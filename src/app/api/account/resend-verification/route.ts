@@ -6,6 +6,7 @@ import { rejectUnsafeRequest } from "@/server/http/guards";
 import { limits } from "@/server/http/limits";
 import { clientIp, enforce } from "@/server/http/rate-limit";
 import { getMailer } from "@/server/email";
+import { log } from "@/server/log";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     try {
       await resendVerification(getDb(), getMailer(), parsed.data.email);
     } catch (err) {
-      console.error("resend-verification failed:", err instanceof Error ? err.message : "unknown error");
+      log.error("resend-verification failed", err);
     }
   });
   return NextResponse.json({ ok: true });

@@ -70,6 +70,9 @@ export function LoginForm({ next, authError, googleEnabled }: { next?: string; a
         <Link href="/forgot" className="glass-focus rounded-full text-center text-sm font-medium text-accent-strong underline-offset-4 hover:underline">
           Forgot your password?
         </Link>
+        <Link href="/install" className="glass-focus rounded-full text-center text-sm font-medium text-ink-muted underline-offset-4 hover:underline">
+          Add Cadence to your phone
+        </Link>
       </form>
       {googleEnabled && (
         <>

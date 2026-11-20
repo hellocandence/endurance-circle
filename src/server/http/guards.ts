@@ -11,7 +11,11 @@ export function rejectUnsafeRequest(req: Request, env: Record<string, string | u
   if (!contentType.toLowerCase().startsWith("application/json")) {
     return NextResponse.json({ error: "unsupported_media_type" }, { status: 415 });
   }
+  return rejectCrossOrigin(req, env);
+}
 
+/** Origin check only (for authenticated routes and body-less methods such as DELETE). */
+export function rejectCrossOrigin(req: Request, env: Record<string, string | undefined> = process.env): NextResponse | null {
   if (req.headers.get("sec-fetch-site") === "cross-site") {
     return NextResponse.json({ error: "forbidden_origin" }, { status: 403 });
   }

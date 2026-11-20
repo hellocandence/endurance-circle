@@ -17,6 +17,8 @@ function build() {
     emailIpEmail: l(5), // ... per address + target email (stops mail bombing a victim)
     emailEmail: l(10), // ... per target email across all addresses
     tokenIp: l(20), // verify-email / reset-password token guessing
+    passwordUser: l(5), // wrong "current password" guesses while signed in, per member
+    photoUser: l(10), // image processing is CPU heavy: 10 uploads per 15 min per member
   };
 }
 

@@ -3,6 +3,7 @@ import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
 import { migrate as migratePglite } from "drizzle-orm/pglite/migrator";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import type { PgliteDatabase } from "drizzle-orm/pglite";
+import { log } from "@/server/log";
 import { createDb } from "./client";
 
 const migrationsFolder = "drizzle";
@@ -17,13 +18,13 @@ async function main() {
     } else {
       await migratePglite(handle.db as unknown as PgliteDatabase, { migrationsFolder });
     }
-    console.log(`migrations applied (${handle.kind})`);
+    log.info("migrations applied", { driver: handle.kind });
   } finally {
     await handle.close();
   }
 }
 
 main().catch((err) => {
-  console.error(err);
+  log.error("migration failed", err);
   process.exit(1);
 });

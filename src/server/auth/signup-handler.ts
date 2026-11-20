@@ -3,7 +3,7 @@ import type { Mailer } from "@/server/email";
 import { notifyAlreadyRegistered } from "./account";
 import { signUpWithInvite } from "./invites";
 
-export type SignUpInput = { token: string; email: string; password: string; name: string };
+export type SignUpInput = { token: string; email: string; password: string; name: string; now?: Date };
 
 /**
  * Same answer whether or not the email already has an account (no enumeration by invite holders):

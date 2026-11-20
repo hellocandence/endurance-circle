@@ -1,8 +1,5 @@
-import { PGlite } from "@electric-sql/pglite";
-import { vector } from "@electric-sql/pglite-pgvector";
-import { drizzle } from "drizzle-orm/pglite";
-import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { makeTestDb, type RawSql } from "./helpers/db";
 
 const TABLES = [
   "accounts",
@@ -19,13 +16,15 @@ const TABLES = [
   "verification_tokens",
 ];
 
-let pg: PGlite;
+let pg: RawSql;
+let close: () => Promise<void>;
 
 beforeAll(async () => {
-  pg = new PGlite({ extensions: { vector } });
-  await migrate(drizzle(pg), { migrationsFolder: "drizzle" });
+  const ctx = await makeTestDb(); // PGlite by default, a real Postgres when TEST_DATABASE_URL is set
+  pg = ctx.pg;
+  close = ctx.close;
 });
-afterAll(() => pg.close());
+afterAll(() => close());
 
 const user = async (email: string) =>
   (await pg.query<{ id: string }>("INSERT INTO users (email, display_name) VALUES ($1, 'x') RETURNING id", [email]))

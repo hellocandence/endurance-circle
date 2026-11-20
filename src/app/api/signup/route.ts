@@ -2,11 +2,13 @@ import { after, NextResponse } from "next/server";
 import { z } from "zod";
 import { PASSWORD_MAX } from "@/server/auth/password";
 import { handleSignUp } from "@/server/auth/signup-handler";
+import { requestNow } from "@/server/clock";
 import { getDb } from "@/server/db";
 import { getMailer, type Mailer } from "@/server/email";
 import { rejectUnsafeRequest } from "@/server/http/guards";
 import { limits } from "@/server/http/limits";
 import { clientIp, enforce } from "@/server/http/rate-limit";
+import { log } from "@/server/log";
 
 export const dynamic = "force-dynamic";
 
@@ -36,10 +38,10 @@ export async function POST(req: Request) {
         try {
           await mailer.send(m);
         } catch (err) {
-          console.error("signup email failed:", err instanceof Error ? err.message : "unknown error");
+          log.error("signup email failed", err);
         }
       }),
   };
-  const { status, body } = await handleSignUp(getDb(), deferred, parsed.data);
+  const { status, body } = await handleSignUp(getDb(), deferred, { ...parsed.data, now: await requestNow() });
   return NextResponse.json(body, { status });
 }

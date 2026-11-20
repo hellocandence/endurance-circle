@@ -1,14 +1,10 @@
 import { and, eq } from "drizzle-orm";
+import { localDate } from "@/server/tracker/dates";
 import type { Db } from "./client";
 import { bodyMetrics, commitments, profiles, users } from "./schema";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PROGRAM_NAME = "75 Hard";
-
-/** YYYY-MM-DD for `now` in the given IANA time zone. */
-function localDate(now: Date, timeZone: string): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
-}
 
 /**
  * Idempotent bootstrap: the OWNER user (+ profile and default body metrics rows) and one active

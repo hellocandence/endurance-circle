@@ -64,6 +64,13 @@ body {
 
 /* Honour reduced motion for any CSS transition or animation. */
 @media (prefers-reduced-motion: reduce) {
+  /* Framer Motion's entrance styles are rendered into the server HTML (the server cannot know this
+     preference), so force the final state in CSS: no shifted or invisible first frame before hydration. */
+  [data-motion] {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
   *,
   *::before,
   *::after {

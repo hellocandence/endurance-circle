@@ -185,6 +185,10 @@ export const dailyLogs = pgTable(
     updateText: text("update_text"), // short public line
     privateNotes: text("private_notes"), // PRIVATE
     completed: boolean("completed").notNull().default(false),
+    // Stored when the day is saved, so public (circle-wide) queries can show "6/8" without ever
+    // reading body_metrics (whose targets decide what counts as done).
+    doneCount: integer("done_count").notNull().default(0),
+    requiredCount: integer("required_count").notNull().default(0),
     // Logged misses never reset the day count (BR4)
     missedTasks: text("missed_tasks").array().notNull().default(sql`'{}'::text[]`),
     ...timestamps(),
