@@ -1,9 +1,11 @@
+import { cookies } from "next/headers";
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { getDb } from "@/server/db";
 import { createAdapter } from "./adapter";
 import { decideGoogleSignIn } from "./google";
 import { toPublicSession } from "./public-session";
+import { INVITE_COOKIE } from "./invite-cookie";
 import { SESSION_MAX_AGE, SESSION_UPDATE_AGE } from "./session-config";
 
 declare module "next-auth" {
@@ -30,7 +32,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth(() => ({
   callbacks: {
     async signIn({ account, profile }) {
       if (account?.provider !== "google") return false; // no other Auth.js provider is allowed to sign in
-      return decideGoogleSignIn(getDb(), { email: profile?.email, email_verified: profile?.email_verified });
+      const inviteToken = (await cookies()).get(INVITE_COOKIE)?.value ?? null;
+      return decideGoogleSignIn(
+        getDb(),
+        { email: profile?.email, email_verified: profile?.email_verified, name: profile?.name },
+        { inviteToken },
+      );
     },
     session: ({ session, user }) => toPublicSession(session, user) as typeof session,
   },

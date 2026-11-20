@@ -8,7 +8,31 @@ import { consumeToken, issueToken } from "./tokens";
 const baseUrl = () => (process.env.AUTH_URL ?? "http://localhost:3000").replace(/\/$/, "");
 const normalize = (email: string) => email.trim().toLowerCase();
 
-async function sendVerification(db: Db, mailer: Mailer, email: string, now?: Date) {
+type DbOrTx = Pick<Db, "insert">;
+
+/** Insert a MEMBER with its profile and default body-metrics rows. Null if the email is taken. */
+export async function createMemberRow(
+  db: DbOrTx,
+  input: { email: string; name: string; passwordHash: string | null; emailVerified?: Date | null },
+): Promise<string | null> {
+  const [created] = await db
+    .insert(users)
+    .values({
+      email: normalize(input.email),
+      name: input.name.trim(),
+      passwordHash: input.passwordHash,
+      emailVerified: input.emailVerified ?? null,
+      role: "MEMBER",
+    })
+    .onConflictDoNothing({ target: users.email })
+    .returning({ id: users.id });
+  if (!created) return null;
+  await db.insert(profiles).values({ userId: created.id });
+  await db.insert(bodyMetrics).values({ userId: created.id });
+  return created.id;
+}
+
+export async function sendVerification(db: Db, mailer: Mailer, email: string, now?: Date) {
   const token = await issueToken(db, "verify", email, now);
   await mailer.send({
     to: email,
@@ -30,17 +54,10 @@ export async function registerUser(
   if (problem) return { ok: false, reason: "weak_password", message: problem };
 
   const email = normalize(input.email);
-  const [created] = await db
-    .insert(users)
-    .values({ email, name: input.name.trim(), passwordHash: await hashPassword(input.password), role: "MEMBER" })
-    .onConflictDoNothing({ target: users.email })
-    .returning({ id: users.id });
-  if (!created) return { ok: false, reason: "email_taken" };
-
-  await db.insert(profiles).values({ userId: created.id });
-  await db.insert(bodyMetrics).values({ userId: created.id });
+  const userId = await createMemberRow(db, { email, name: input.name, passwordHash: await hashPassword(input.password) });
+  if (!userId) return { ok: false, reason: "email_taken" };
   await sendVerification(db, mailer, email, input.now);
-  return { ok: true, userId: created.id };
+  return { ok: true, userId };
 }
 
 /** Always resolves the same way, so it cannot be used to discover which emails have accounts. */

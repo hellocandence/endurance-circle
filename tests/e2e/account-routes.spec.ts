@@ -28,3 +28,10 @@ test("cross-site and non-JSON posts are refused (login CSRF)", async ({ request 
   const plain = await request.post("/api/login", { headers: { "content-type": "text/plain" }, data: '{"email":"a@example.com","password":"x"}' });
   expect(plain.status()).toBe(415);
 });
+
+test("sign-up and invite-start refuse bad invites", async ({ request }) => {
+  const body = { token: "bogus", email: "x@example.com", password: "long-enough-password", name: "X" };
+  expect((await request.post("/api/signup", { data: body })).status()).toBe(400);
+  expect((await request.post("/api/invite/start", { data: { token: "bogus" } })).status()).toBe(400);
+  expect((await request.post("/api/signup", { data: { ...body, email: "nope" } })).status()).toBe(400);
+});
