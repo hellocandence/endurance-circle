@@ -1,26 +1,75 @@
 @import "tailwindcss";
 
+/* Design tokens. Light theme only (PRD §8). Text pairs target WCAG AA (NFR-05). */
+@theme {
+  --color-ink: #0f172a;
+  --color-ink-muted: #475569;
+  --color-accent: #4f46e5;
+  --color-accent-strong: #4338ca;
+  --color-success: #047857;
+  --color-danger: #b91c1c;
+
+  --color-glass: rgb(255 255 255 / 0.62);
+  --color-glass-strong: rgb(255 255 255 / 0.82);
+  --color-glass-border: rgb(255 255 255 / 0.85);
+
+  --blur-glass: 20px;
+  --radius-glass: 1.5rem;
+  --shadow-glass: 0 8px 32px rgb(49 46 129 / 0.12), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --shadow-glass-press: 0 4px 16px rgb(49 46 129 / 0.14), inset 0 1px 0 rgb(255 255 255 / 0.9);
+
+  --ease-out-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  min-height: 100dvh;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  background-color: #eef2ff;
+  background-image:
+    radial-gradient(60rem 40rem at 10% -10%, #c7d2fe 0%, transparent 60%),
+    radial-gradient(50rem 36rem at 100% 0%, #fbcfe8 0%, transparent 55%),
+    radial-gradient(60rem 40rem at 50% 110%, #bae6fd 0%, transparent 60%);
+  background-attachment: fixed;
+}
+
+/* Frosted panel: translucent white, 16 to 24 px blur, soft shadow. */
+@utility glass {
+  background: var(--color-glass);
+  -webkit-backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  backdrop-filter: blur(var(--blur-glass)) saturate(160%);
+  border: 1px solid var(--color-glass-border);
+  box-shadow: var(--shadow-glass);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background: var(--color-glass-strong);
+  }
+}
+
+@utility glass-focus {
+  &:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+}
+
+/* Honour reduced motion for any CSS transition or animation. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
