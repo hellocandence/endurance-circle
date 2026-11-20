@@ -1,0 +1,30 @@
+import { expect, test } from "@playwright/test";
+
+test.describe("account routes (public, generic responses)", () => {
+  test("forgot-password answers the same for unknown emails", async ({ request }) => {
+    const res = await request.post("/api/account/forgot-password", { data: { email: "nobody@example.com" } });
+    expect(res.status()).toBe(200);
+    expect(await res.json()).toEqual({ ok: true });
+  });
+
+  test("bad tokens are rejected", async ({ request }) => {
+    expect((await request.post("/api/account/verify-email", { data: { token: "nope" } })).status()).toBe(400);
+    const r = await request.post("/api/account/reset-password", { data: { token: "nope", password: "long-enough-password" } });
+    expect(r.status()).toBe(400);
+  });
+
+  test("malformed input is rejected", async ({ request }) => {
+    expect((await request.post("/api/account/forgot-password", { data: { email: "not-an-email" } })).status()).toBe(400);
+    expect((await request.post("/api/login", { data: {} })).status()).toBe(400);
+  });
+});
+
+test("cross-site and non-JSON posts are refused (login CSRF)", async ({ request }) => {
+  const evil = await request.post("/api/login", {
+    data: { email: "a@example.com", password: "x" },
+    headers: { origin: "https://evil.example" },
+  });
+  expect(evil.status()).toBe(403);
+  const plain = await request.post("/api/login", { headers: { "content-type": "text/plain" }, data: '{"email":"a@example.com","password":"x"}' });
+  expect(plain.status()).toBe(415);
+});
