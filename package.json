@@ -15,7 +15,9 @@
     "e2e:pwa": "playwright test -c playwright.pwa.config.ts",
     "db:migrate": "tsx src/server/db/migrate.ts",
     "db:generate": "drizzle-kit generate",
-    "db:seed": "tsx src/server/db/run-seed.ts"
+    "db:seed": "tsx src/server/db/run-seed.ts",
+    "owner:password": "tsx scripts/set-owner-password.ts",
+    "gmail:token": "tsx scripts/gmail-token.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

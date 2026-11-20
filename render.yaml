@@ -25,11 +25,13 @@ services:
         sync: false
       - key: OWNER_EMAIL # becomes the OWNER on first boot
         sync: false
-      - key: SMTP_USER # Gmail address that sends mail (verification, password reset). Required in production
+      - key: GMAIL_CLIENT_ID # email goes through the Gmail API over HTTPS (Render free blocks SMTP ports). Required in production
         sync: false
-      - key: SMTP_PASS # Gmail App password (not the account password)
+      - key: GMAIL_CLIENT_SECRET
         sync: false
-      - key: EMAIL_FROM # e.g. Cadence <you@gmail.com>; Gmail only sends as SMTP_USER
+      - key: GMAIL_REFRESH_TOKEN # from `pnpm gmail:token`
+        sync: false
+      - key: EMAIL_FROM # e.g. Cadence <you@gmail.com>; Gmail sends as the account that granted the token
         sync: false
       - key: AUTH_GOOGLE_ID # optional until Google sign-in is set up (T083)
         sync: false

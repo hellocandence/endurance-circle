@@ -48,6 +48,9 @@ function brevoMailer(apiKey: string, from: string): Mailer {
 }
 
 type MailEnv = {
+  GMAIL_CLIENT_ID?: string;
+  GMAIL_CLIENT_SECRET?: string;
+  GMAIL_REFRESH_TOKEN?: string;
   SMTP_USER?: string;
   SMTP_PASS?: string;
   SMTP_HOST?: string;
@@ -57,6 +60,61 @@ type MailEnv = {
   EMAIL_FROM?: string;
   NODE_ENV?: string;
 };
+
+const base64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
+const oneLine = (s: string) => s.replace(/[\r\n]+/g, " ").trim(); // no header injection through subject/address
+const encodeHeader = (s: string) => (/^[\x20-\x7e]*$/.test(s) ? s : `=?UTF-8?B?${base64(s)}?=`);
+
+/** RFC 822 plain-text message, as the Gmail API wants it (base64url of the whole thing). */
+export function buildRawMessage(from: string, { to, subject, text }: Email): string {
+  const body = base64(text).replace(/.{1,76}/g, "$&\r\n");
+  const message = [
+    `From: ${oneLine(from)}`,
+    `To: ${oneLine(to)}`,
+    `Subject: ${encodeHeader(oneLine(subject))}`,
+    "MIME-Version: 1.0",
+    "Content-Type: text/plain; charset=UTF-8",
+    "Content-Transfer-Encoding: base64",
+    "",
+    body,
+  ].join("\r\n");
+  return Buffer.from(message, "utf8").toString("base64url");
+}
+
+/**
+ * Gmail API over HTTPS (port 443): works where SMTP ports are blocked, such as Render's free tier.
+ * Sends as the Google account that granted the refresh token (scope gmail.send).
+ */
+function gmailApiMailer(env: { GMAIL_CLIENT_ID: string; GMAIL_CLIENT_SECRET: string; GMAIL_REFRESH_TOKEN: string; EMAIL_FROM: string }): Mailer {
+  let cached: { token: string; expiresAt: number } | null = null;
+  async function accessToken(): Promise<string> {
+    if (cached && cached.expiresAt > Date.now() + 60_000) return cached.token;
+    const res = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        client_id: env.GMAIL_CLIENT_ID,
+        client_secret: env.GMAIL_CLIENT_SECRET,
+        refresh_token: env.GMAIL_REFRESH_TOKEN,
+        grant_type: "refresh_token",
+      }),
+    });
+    if (!res.ok) throw new Error(`Google token endpoint responded ${res.status}`);
+    const json = (await res.json()) as { access_token: string; expires_in: number };
+    cached = { token: json.access_token, expiresAt: Date.now() + json.expires_in * 1000 };
+    return cached.token;
+  }
+  return {
+    async send(message) {
+      const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await accessToken()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ raw: buildRawMessage(env.EMAIL_FROM, message) }),
+      });
+      if (!res.ok) throw new Error(`Gmail API responded ${res.status}`);
+    },
+  };
+}
 
 /** Gmail (or any SMTP) with an app password. Port 465 is implicit TLS; 587 uses STARTTLS. */
 function smtpMailer(env: MailEnv & { SMTP_USER: string; SMTP_PASS: string; EMAIL_FROM: string }): Mailer {
@@ -74,8 +132,12 @@ function smtpMailer(env: MailEnv & { SMTP_USER: string; SMTP_PASS: string; EMAIL
   };
 }
 
-/** SMTP, Brevo or Resend when configured (in that order); the dev mailer otherwise. Production fails closed. */
+/** Gmail API, SMTP, Brevo or Resend when configured (in that order); the dev mailer otherwise. Production fails closed. */
 export function getMailer(env: MailEnv = process.env): Mailer {
+  if (env.GMAIL_CLIENT_ID && env.GMAIL_CLIENT_SECRET && env.GMAIL_REFRESH_TOKEN) {
+    if (!env.EMAIL_FROM) throw new Error("EMAIL_FROM is required when the Gmail API is configured");
+    return gmailApiMailer({ GMAIL_CLIENT_ID: env.GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET: env.GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN: env.GMAIL_REFRESH_TOKEN, EMAIL_FROM: env.EMAIL_FROM });
+  }
   if (env.SMTP_USER && env.SMTP_PASS) {
     if (!env.EMAIL_FROM) throw new Error("EMAIL_FROM is required when SMTP_USER is set");
     return smtpMailer({ ...env, SMTP_USER: env.SMTP_USER, SMTP_PASS: env.SMTP_PASS, EMAIL_FROM: env.EMAIL_FROM });
@@ -88,6 +150,6 @@ export function getMailer(env: MailEnv = process.env): Mailer {
     if (!env.EMAIL_FROM) throw new Error("EMAIL_FROM is required when RESEND_API_KEY is set");
     return resendMailer(env.RESEND_API_KEY, env.EMAIL_FROM);
   }
-  if (env.NODE_ENV === "production") throw new Error("SMTP_USER and SMTP_PASS (or BREVO_API_KEY / RESEND_API_KEY) are required in production");
+  if (env.NODE_ENV === "production") throw new Error("Email is not configured: set GMAIL_* (Gmail API), SMTP_*, BREVO_API_KEY or RESEND_API_KEY");
   return devMailer;
 }
