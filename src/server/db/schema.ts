@@ -45,7 +45,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   emailVerified: tstz("email_verified_at"),
   passwordHash: text("password_hash"), // null for Google-only accounts
-  displayName: text("display_name").notNull(),
+  name: text("display_name").notNull(),
   role: roleEnum("role").notNull().default("MEMBER"),
   timeZone: text("time_zone").notNull().default("Asia/Kolkata"),
   disabled: boolean("disabled").notNull().default(false),

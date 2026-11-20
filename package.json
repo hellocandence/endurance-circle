@@ -15,11 +15,13 @@
     "db:seed": "tsx src/server/db/run-seed.ts"
   },
   "dependencies": {
+    "@auth/drizzle-adapter": "^1.11.3",
     "@electric-sql/pglite": "^0.5.16",
     "@electric-sql/pglite-pgvector": "^0.0.17",
     "drizzle-orm": "^0.45.4",
     "framer-motion": "^14.14.0",
     "next": "15.5.29",
+    "next-auth": "5.0.0-beta.32",
     "pg": "^8.23.1",
     "react": "19.1.0",
     "react-dom": "19.1.0"

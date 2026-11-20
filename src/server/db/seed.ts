@@ -24,7 +24,7 @@ export async function seed(db: Db, opts: { ownerEmail: string; now?: Date }) {
     // No password is set: the owner signs in with Google or the password-reset flow.
     const [owner] = await tx
       .insert(users)
-      .values({ email, displayName: email.split("@")[0], role: "OWNER", emailVerified: now })
+      .values({ email, name: email.split("@")[0], role: "OWNER", emailVerified: now })
       .onConflictDoUpdate({ target: users.email, set: { role: "OWNER" } })
       .returning();
 
