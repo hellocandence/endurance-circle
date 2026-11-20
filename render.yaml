@@ -17,7 +17,7 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      - key: DATABASE_URL # Supabase Session pooler URI (port 5432) ending in ?uselibpqcompat=true&sslmode=require (plain sslmode=require fails with a self-signed-cert error). Render has no IPv6, so not the direct host
+      - key: DATABASE_URL # Supabase Session pooler URI (port 5432) ending in ?sslmode=verify-full&sslrootcert=certs/supabase-ca.crt (verifies the server against the Supabase root CA committed in certs/; plain sslmode=require fails with a self-signed-cert error) Render has no IPv6, so not the direct host
         sync: false
       - key: AUTH_SECRET
         generateValue: true # random, stays the same across deploys
