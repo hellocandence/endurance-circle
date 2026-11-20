@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GlassButton, GlassCard, ProgressRing } from "@/components/ui";
 import type { TrackerPayload } from "@/server/tracker/respond";
 import { evaluateDay, type TaskKey, type TrackerConfig } from "@/server/tracker/rules";
 import type { DayPatch } from "@/server/tracker/schema";
 import { Celebration } from "./Celebration";
+import { useConfetti } from "./Confetti";
 import { Chip, NumberField, TextField, Toggle } from "./controls";
 import { TaskCard } from "./TaskCard";
 import { useDaySaver } from "./useDaySaver";
@@ -47,10 +48,29 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
   const sunday = data.isSunday;
   const pct = (result.doneCount / result.requiredCount) * 100;
 
+  // Celebrate a task the moment it flips to done (not on first load), and the whole day when it completes.
+  const { fire, layer } = useConfetti();
+  const doneKey = result.done.join(",");
+  const previous = useRef<{ done: string; completed: boolean } | null>(null);
+  useEffect(() => {
+    const was = previous.current;
+    previous.current = { done: doneKey, completed: result.completed };
+    if (!was) return;
+    if (!was.completed && result.completed) return void fire("day");
+    const before = new Set(was.done.split(","));
+    if (doneKey.split(",").some((k) => k && !before.has(k))) {
+      // burst from the card being worked on (the focused control sits inside it), else near the top
+      const card = (document.activeElement as HTMLElement | null)?.closest("[role=group][data-done]");
+      const r = card?.getBoundingClientRect();
+      fire("task", r ? { x: r.left + 30, y: r.top + 28 } : undefined);
+    }
+  }, [doneKey, result.completed, fire]);
+
   const dateLabel = new Intl.DateTimeFormat("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "UTC" }).format(new Date(`${data.date}T00:00:00Z`));
 
   return (
     <div className="flex flex-col gap-4">
+      {layer}
       <header className="flex items-center justify-between gap-4">
         <div>
           <p className="text-sm font-medium text-ink-muted">{dateLabel}</p>

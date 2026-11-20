@@ -85,6 +85,7 @@ test.describe("normal day (Monday, day 23)", () => {
     await page.getByRole("spinbutton", { name: "Time", exact: true }).fill("20");
 
     await expect(page.getByRole("status").filter({ hasText: "Day complete" })).toBeVisible();
+    await expect(page.getByTestId("confetti")).toContainText("🎉"); // the day-complete party popper
     await expect(ring(page)).toHaveAttribute("aria-valuenow", "100");
     await waitSaved(page);
 
@@ -225,5 +226,39 @@ test.describe("Day 75", () => {
     await page.goto("/today");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 74");
     await expect(page.getByRole("dialog")).toHaveCount(0);
+  });
+});
+
+test.describe("celebrations and the circle's activity", () => {
+  test("finishing a task pops confetti, and the circle then sees who did what", async ({ page }) => {
+    await loginAs(page, "frank@e2e.test", MONDAY);
+    await page.goto("/today");
+    await hydrated(page);
+    await expect(page.getByTestId("confetti").locator("span")).toHaveCount(0); // nothing on first load
+    await page.getByRole("button", { name: "Log 5 km" }).click();
+    await expect(page.getByTestId("confetti").locator("span").first()).toBeVisible();
+    await waitSaved(page);
+
+    await page.goto("/dashboard");
+    await expect(page.getByRole("list", { name: "Frank Member's tasks today" }).getByRole("listitem").filter({ hasText: "Run" })).toHaveAttribute("data-done", "true");
+    await expect(page.getByRole("list", { name: "Today's activity" }).getByRole("listitem").filter({ hasText: "Run" })).toContainText("Frank");
+
+    await page.goto("/today"); // leave the shared seed as we found it
+    await hydrated(page);
+    await page.getByLabel("Distance").fill("0");
+    await waitSaved(page);
+  });
+
+  test("with reduced motion there is no confetti", async ({ page }) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await loginAs(page, "frank@e2e.test", MONDAY);
+    await page.goto("/today");
+    await hydrated(page);
+    await page.getByRole("button", { name: "Log 5 km" }).click();
+    await page.waitForTimeout(400);
+    await expect(page.getByTestId("confetti").locator("span")).toHaveCount(0);
+    await waitSaved(page);
+    await page.getByLabel("Distance").fill("0");
+    await waitSaved(page);
   });
 });

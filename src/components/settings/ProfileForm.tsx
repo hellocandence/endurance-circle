@@ -1,29 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { Field, FormMessage } from "@/components/auth/fields";
 import { TextField } from "@/components/today/controls";
 import { GlassButton } from "@/components/ui";
 import { patchJson } from "@/lib/api";
 import type { ProfileView } from "@/server/profile/service";
 import { Section, type Status } from "./Section";
+import { TimeZoneSelect } from "./TimeZoneSelect";
 
 export function ProfileForm({ profile }: { profile: ProfileView }) {
   const router = useRouter();
   const [name, setName] = useState(profile.name);
   const [timeZone, setTimeZone] = useState(profile.timeZone);
   const [bio, setBio] = useState(profile.bio ?? "");
-  const [zones, setZones] = useState<string[]>([]);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
-
-  useEffect(() => {
-    try {
-      setZones(Intl.supportedValuesOf("timeZone"));
-    } catch {
-      /* older browsers: free text still works, the server validates */
-    }
-  }, []);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -44,16 +36,7 @@ export function ProfileForm({ profile }: { profile: ProfileView }) {
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Field label="Display name" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} required autoComplete="name" />
         <div className="flex flex-col gap-1.5">
-          <Field
-            label="Time zone"
-            value={timeZone}
-            onChange={(e) => setTimeZone(e.target.value)}
-            list="tz-list"
-            autoComplete="off"
-            required
-            hint="Your day starts and ends at midnight in this zone."
-          />
-          <datalist id="tz-list">{zones.map((z) => <option key={z} value={z} />)}</datalist>
+          <TimeZoneSelect value={timeZone} onChange={setTimeZone} />
           <button
             type="button"
             onClick={() => setTimeZone(Intl.DateTimeFormat().resolvedOptions().timeZone)}

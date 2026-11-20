@@ -3,6 +3,20 @@ import { daysBetween, isSunday } from "./dates";
 export const TASK_KEYS = ["RUN", "WARM_PRE", "WARM_POST", "STRETCH", "WATER", "ELECTRO", "PROTEIN", "STUDY", "TECH", "GITHUB", "SATSANG"] as const;
 export type TaskKey = (typeof TASK_KEYS)[number];
 
+export const TASK_LABELS: Record<TaskKey, string> = {
+  RUN: "Run",
+  WARM_PRE: "Warm-up",
+  WARM_POST: "Cool-down",
+  STRETCH: "Stretch",
+  WATER: "Water",
+  ELECTRO: "Electrolytes",
+  PROTEIN: "Protein",
+  STUDY: "Study",
+  TECH: "Tech tip",
+  GITHUB: "GitHub",
+  SATSANG: "Reading",
+};
+
 /** What a member logged for one day (the daily_logs fields the rules read). */
 export type DayInput = {
   runKm: number;

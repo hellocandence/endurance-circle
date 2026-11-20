@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import { GlassCard, ProgressRing } from "@/components/ui";
+import { TASK_LABELS, type TaskKey } from "@/server/tracker/rules";
 
 export type CardMember = {
   id: string;
@@ -13,6 +14,8 @@ export type CardMember = {
   streak: number;
   updateText: string | null;
   commitmentPct: number;
+  doneTasks: string[];
+  requiredTasks: string[];
   isMe: boolean;
 };
 
@@ -44,6 +47,24 @@ export function MemberCard({ m, index = 0 }: { m: CardMember; index?: number }) 
             <span className="text-xs">{m.todayDone}/{m.todayTotal}</span>
           </ProgressRing>
         </div>
+        {m.requiredTasks.length > 0 && (
+          <ul aria-label={`${m.displayName}'s tasks today`} className="flex flex-wrap gap-1.5">
+            {m.requiredTasks.map((k) => {
+              const done = m.doneTasks.includes(k);
+              return (
+                <li
+                  key={k}
+                  data-done={done}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${done ? "bg-emerald-100 text-emerald-900" : "bg-white/50 text-ink-muted"}`}
+                >
+                  <span aria-hidden="true">{done ? "✓ " : ""}</span>
+                  {TASK_LABELS[k as TaskKey] ?? k}
+                  <span className="sr-only">{done ? ": done" : ": not yet"}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
         {m.updateText && <p className="rounded-2xl bg-white/60 px-3 py-2 text-sm">{m.updateText}</p>}
         <div>
           <div className="mb-1 flex justify-between text-xs font-medium text-ink-muted">

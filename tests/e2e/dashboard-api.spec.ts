@@ -16,7 +16,7 @@ test("AT-03: the public feed carries no body metrics or private notes", async ({
   expect(res.status()).toBe(200);
   const text = await res.text();
   expect(text).not.toContain("PRIVATE-CANARY-77");
-  expect(text).not.toMatch(/weight|height|protein|privateNotes|email|passwordHash/i);
+  expect(text).not.toMatch(/weight|height|proteinG|proteinTarget|proteinMultiplier|privateNotes|email|passwordHash/i);
 
   const body = JSON.parse(text);
   expect(body.members.length).toBeGreaterThanOrEqual(MEMBER_COUNT);

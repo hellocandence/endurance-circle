@@ -29,7 +29,7 @@ describe("publicMember never contains body metrics or private notes", () => {
 
   it("returns exactly the allowlisted keys", () => {
     expect(Object.keys(publicMember(hostile)).sort()).toEqual(
-      ["avatarUrl", "commitmentPct", "dayNumber", "displayName", "id", "streak", "todayDone", "todayTotal", "updateText"].sort(),
+      ["avatarUrl", "commitmentPct", "dayNumber", "displayName", "doneTasks", "id", "requiredTasks", "streak", "todayDone", "todayTotal", "updateText"].sort(),
     );
   });
 
@@ -48,7 +48,7 @@ describe("publicMember never contains body metrics or private notes", () => {
   });
 
   it("defaults missing values safely", () => {
-    expect(publicMember({ id: "x", name: "X" })).toEqual({ id: "x", displayName: "X", avatarUrl: null, todayDone: 0, todayTotal: 0, dayNumber: null, streak: 0, updateText: null, commitmentPct: 0 });
+    expect(publicMember({ id: "x", name: "X" })).toEqual({ id: "x", displayName: "X", avatarUrl: null, todayDone: 0, todayTotal: 0, dayNumber: null, streak: 0, updateText: null, commitmentPct: 0, doneTasks: [], requiredTasks: [] });
   });
 });
 

@@ -1,0 +1,1 @@
+ALTER TABLE "daily_logs" ADD COLUMN "done_tasks" text[] DEFAULT '{}'::text[] NOT NULL;

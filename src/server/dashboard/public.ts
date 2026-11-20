@@ -3,7 +3,7 @@ import type { Db } from "@/server/db/client";
 import { commitments, dailyLogs, profiles, users } from "@/server/db/schema";
 import { publicMember, type PublicMember } from "@/server/privacy";
 import { publicLogColumns, publicUserColumns } from "@/server/privacy/columns";
-import { completion, dayNumber, isSunday, localDate, perfectDaysInARow, requiredTasks } from "@/server/tracker";
+import { completion, dayNumber, isSunday, localDate, perfectDaysInARow, requiredTasks, TASK_KEYS, TASK_LABELS } from "@/server/tracker";
 
 export type CirclePulse = {
   memberCount: number;
@@ -12,6 +12,8 @@ export type CirclePulse = {
   tasksDone: number;
   tasksTotal: number;
   averageCompletionPct: number;
+  /** Today, task by task: who has ticked it (public names only). */
+  activity: { key: string; label: string; total: number; done: { id: string; name: string }[] }[];
 };
 
 /** Circle-wide summary, built from public member cards only. */
@@ -25,6 +27,10 @@ export function circlePulse(members: PublicMember[]): CirclePulse {
     tasksDone: done,
     tasksTotal: total,
     averageCompletionPct: members.length ? Math.round(members.reduce((n, m) => n + m.commitmentPct, 0) / members.length) : 0,
+    activity: TASK_KEYS.map((key) => {
+      const asked = members.filter((m) => m.requiredTasks.includes(key));
+      return { key, label: TASK_LABELS[key], total: asked.length, done: asked.filter((m) => m.doneTasks.includes(key)).map((m) => ({ id: m.id, name: m.displayName })) };
+    }).filter((a) => a.total > 0),
   };
 }
 
@@ -76,6 +82,8 @@ export async function getPublicDashboard(db: Db, now = new Date()) {
       avatarUrl: p.avatarPhotoId ? `/api/photos/${p.id}?size=128&v=${p.avatarPhotoId}` : null, // v busts the cache when the photo changes
       todayDone: todayLog?.doneCount ?? 0,
       todayTotal: todayLog?.requiredCount || requiredTasks(isSunday(today)).length,
+      doneTasks: todayLog?.doneTasks ?? [],
+      requiredTasks: requiredTasks(isSunday(today)),
       dayNumber: programme ? dayNumber(programme.startDate, today) : null,
       streak: perfectDaysInARow(days, today),
       updateText: logs.find((l) => l.updateText)?.updateText ?? null, // most recent public line (logs are newest first)

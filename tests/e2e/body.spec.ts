@@ -77,7 +77,7 @@ test("Settings shows the limits form with a live protein target", async ({ page 
 test("a member's limits never appear in the circle feed or on other members' pages", async ({ page }) => {
   await loginAs(page, "bob@e2e.test", MONDAY);
   const feed = await (await page.request.get("/api/dashboard/public")).text();
-  expect(feed).not.toMatch(/weightKg|heightCm|protein|waterTarget|runTarget|studyMinTarget/i);
+  expect(feed).not.toMatch(/weightKg|heightCm|proteinG|proteinTarget|proteinMultiplier|waterTarget|runTarget|studyMinTarget/i);
   await page.goto("/dashboard");
   expect(await page.locator("main").innerText()).not.toMatch(/\bkg\b|protein target|weight/i);
 });

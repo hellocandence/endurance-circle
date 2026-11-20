@@ -11,6 +11,7 @@ import {
   perfectDaysInARow,
   requiredTasks,
   TASK_KEYS,
+  TASK_LABELS,
   taskStatus,
   type TaskKey,
   type TrackerConfig,
@@ -173,20 +174,6 @@ export async function getProgressOverview(db: Db, now = new Date(), trendDays = 
   }
   return { rows, trend };
 }
-
-export const TASK_LABELS: Record<TaskKey, string> = {
-  RUN: "Run",
-  WARM_PRE: "Warm-up",
-  WARM_POST: "Cool-down",
-  STRETCH: "Stretch (Sunday)",
-  WATER: "Water",
-  ELECTRO: "Electrolytes",
-  PROTEIN: "Protein",
-  STUDY: "Study",
-  TECH: "Tech note",
-  GITHUB: "GitHub",
-  SATSANG: "Satsang or reading",
-};
 
 export type MyStats = {
   tasks: { key: TaskKey; label: string; done: number; required: number; pct: number }[];

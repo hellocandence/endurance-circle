@@ -190,6 +190,9 @@ export const dailyLogs = pgTable(
     // reading body_metrics (whose targets decide what counts as done).
     doneCount: integer("done_count").notNull().default(0),
     requiredCount: integer("required_count").notNull().default(0),
+    // Which required tasks are ticked (task names only, never amounts), so the circle can see who did what
+    // without reading body_metrics. Stored on save like done_count.
+    doneTasks: text("done_tasks").array().notNull().default(sql`'{}'::text[]`),
     // Logged misses never reset the day count (BR4)
     missedTasks: text("missed_tasks").array().notNull().default(sql`'{}'::text[]`),
     ...timestamps(),

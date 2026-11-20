@@ -178,6 +178,7 @@ export async function saveDay(
     completed: result.completed,
     doneCount: result.doneCount,
     requiredCount: result.requiredCount,
+    doneTasks: result.done,
     missedTasks: result.missed, // logged for finished days; never resets the day count (BR4)
   };
 

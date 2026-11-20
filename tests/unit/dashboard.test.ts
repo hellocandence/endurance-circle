@@ -44,6 +44,14 @@ describe("getPublicDashboard", () => {
     expect(members.map((m) => m.displayName)).toEqual(["Alice", "Bob", "Idle"]); // "Gone" is disabled
   });
 
+  it("shows which of today's tasks each member has ticked, as names only", async () => {
+    const { members, pulse } = await getPublicDashboard(db(), NOW);
+    const alice = members.find((m) => m.id === ids.alice)!;
+    expect(alice.doneTasks).toEqual(["RUN", "WATER"]);
+    expect(alice.requiredTasks).toHaveLength(10);
+    expect(pulse.activity.find((a) => a.key === "RUN")?.done.map((d) => d.name)).toEqual(["Alice"]);
+  });
+
   it("computes today's count, day number, streak, update line and completion %", async () => {
     const { members } = await getPublicDashboard(db(), NOW);
     const alice = members.find((m) => m.id === ids.alice)!;
@@ -63,11 +71,11 @@ describe("getPublicDashboard", () => {
     for (const secret of [SECRET_NOTE, "bob private", "71.37", "171.9", "99.99", "alice@example.com", "bob@example.com", "argon2", "Asia/Kolkata"]) {
       expect(json).not.toContain(secret);
     }
-    for (const key of [/weight/i, /height/i, /protein/i, /private/i, /notes?\b/i, /email/i, /password/i, /timeZone/i, /target/i]) {
+    for (const key of [/weight/i, /height/i, /proteinG|proteinTarget|proteinMultiplier/i, /private/i, /notes?\b/i, /email/i, /password/i, /timeZone/i, /target/i]) {
       expect(json).not.toMatch(key);
     }
     for (const m of out.members) {
-      expect(Object.keys(m).sort()).toEqual(["avatarUrl", "commitmentPct", "dayNumber", "displayName", "id", "streak", "todayDone", "todayTotal", "updateText"]);
+      expect(Object.keys(m).sort()).toEqual(["avatarUrl", "commitmentPct", "dayNumber", "displayName", "doneTasks", "id", "requiredTasks", "streak", "todayDone", "todayTotal", "updateText"]);
     }
   });
 
@@ -79,14 +87,26 @@ describe("getPublicDashboard", () => {
 });
 
 describe("circlePulse", () => {
-  const m = (over: Partial<PublicMember>): PublicMember => ({ id: "x", displayName: "X", avatarUrl: null, todayDone: 0, todayTotal: 10, dayNumber: 1, streak: 0, updateText: null, commitmentPct: 0, ...over });
+  const m = (over: Partial<PublicMember>): PublicMember => ({ id: "x", displayName: "X", avatarUrl: null, todayDone: 0, todayTotal: 10, dayNumber: 1, streak: 0, updateText: null, commitmentPct: 0, doneTasks: [], requiredTasks: [], ...over });
   it("summarises the circle from public cards only", () => {
     expect(circlePulse([m({ todayDone: 10, commitmentPct: 90 }), m({ todayDone: 4, commitmentPct: 60 }), m({ commitmentPct: 30 })])).toEqual({
-      memberCount: 3, activeToday: 2, completedToday: 1, tasksDone: 14, tasksTotal: 30, averageCompletionPct: 60,
+      memberCount: 3, activeToday: 2, completedToday: 1, tasksDone: 14, tasksTotal: 30, averageCompletionPct: 60, activity: [],
     });
   });
+  it("lists, task by task, who has done what today (names only)", () => {
+    const req = ["RUN", "WATER"];
+    const pulse = circlePulse([
+      m({ id: "a", displayName: "Alice A", requiredTasks: req, doneTasks: ["RUN", "WATER"] }),
+      m({ id: "b", displayName: "Bob B", requiredTasks: req, doneTasks: ["WATER"] }),
+      m({ id: "c", displayName: "Cy C", requiredTasks: ["WATER"], doneTasks: [] }), // Sunday-style day: no run required
+    ]);
+    expect(pulse.activity).toEqual([
+      { key: "RUN", label: "Run", total: 2, done: [{ id: "a", name: "Alice A" }] },
+      { key: "WATER", label: "Water", total: 3, done: [{ id: "a", name: "Alice A" }, { id: "b", name: "Bob B" }] },
+    ]);
+  });
   it("handles an empty circle", () => {
-    expect(circlePulse([])).toEqual({ memberCount: 0, activeToday: 0, completedToday: 0, tasksDone: 0, tasksTotal: 0, averageCompletionPct: 0 });
+    expect(circlePulse([])).toEqual({ memberCount: 0, activeToday: 0, completedToday: 0, tasksDone: 0, tasksTotal: 0, averageCompletionPct: 0, activity: [] });
   });
 });
 

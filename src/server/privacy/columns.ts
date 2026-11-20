@@ -14,6 +14,7 @@ export const publicLogColumns = {
   updateText: dailyLogs.updateText,
   doneCount: dailyLogs.doneCount,
   requiredCount: dailyLogs.requiredCount,
+  doneTasks: dailyLogs.doneTasks, // task names only
 } as const;
 
 /** The only users columns a public query may select (never email, password hash, role flags, time zone). */

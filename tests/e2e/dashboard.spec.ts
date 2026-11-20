@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { MEMBER_COUNT } from "./setup/constants";
-import { loginAs, MONDAY } from "./helpers";
+import { hydrated, loginAs, MONDAY } from "./helpers";
 
 const noHorizontalScroll = async (page: Page) =>
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
@@ -30,7 +30,7 @@ test.describe("circle tab", () => {
 
     await expect(page.getByRole("heading", { name: "Circle", exact: true, level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Circle pulse" })).toBeVisible();
-    const members = page.getByRole("list", { name: "Members" }).getByRole("listitem");
+    const members = page.getByRole("list", { name: "Members" }).locator(":scope > li"); // (each card also holds a list of task chips)
     await expect(members).toHaveCount(MEMBER_COUNT);
     for (const name of ["Olivia Owner", "Alice Member", "Bob Member", "Fresh Member"]) {
       await expect(page.getByRole("heading", { name, level: 3 })).toBeVisible();
@@ -130,4 +130,17 @@ test("respects reduced motion and passes axe (serious and critical)", async ({ p
   expect(transforms.every((t) => t === "none")).toBe(true);
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes[0]?.html}`)).toEqual([]);
+});
+
+test("the circle shows each member's tasks for today and who has done what", async ({ page }) => {
+  await loginAs(page, "alice@e2e.test", MONDAY);
+  await page.goto("/dashboard");
+  await hydrated(page);
+  await expect(page.getByRole("heading", { name: "Who has done what today" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Today's activity" }).getByRole("listitem").first()).toBeVisible();
+  const mine = page.getByRole("list", { name: "Alice Member's tasks today" });
+  await expect(mine.getByRole("listitem")).toHaveCount(10); // a normal Monday
+  // task names only: no amounts, notes or body numbers anywhere in the feed
+  const feed = await page.request.get("/api/dashboard/public");
+  expect(JSON.stringify(await feed.json())).not.toMatch(/weight|privateNotes|proteinG|waterL|runKm|email/i);
 });

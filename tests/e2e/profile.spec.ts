@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { loginAs, MONDAY } from "./helpers";
+import { hydrated, loginAs, MONDAY } from "./helpers";
 
 const meId = async (page: Page) => (await (await page.request.get("/api/me")).json()).id as string;
 
@@ -13,7 +13,7 @@ test("a member edits their own profile; the change shows on the dashboard", asyn
   await page.goto("/settings");
   expect(page.viewportSize()!.width).toBe(375);
   await page.getByLabel("Display name").fill("Carol Runner");
-  await page.getByLabel("Time zone").fill("Europe/London");
+  await page.getByLabel("Time zone").selectOption("Europe/London");
   await page.getByLabel("Bio").fill("Early mornings.");
   await page.getByRole("button", { name: "Save profile" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Profile saved." })).toBeVisible();
@@ -25,12 +25,23 @@ test("a member edits their own profile; the change shows on the dashboard", asyn
   await expect(page.getByRole("heading", { name: "Carol Runner", level: 3 })).toBeVisible();
 });
 
-test("an unknown time zone is rejected with a clear message", async ({ page }) => {
+test("the time zone is a real dropdown of every zone, with the current one selected", async ({ page }) => {
   await loginAs(page, "carol@e2e.test", MONDAY);
   await page.goto("/settings");
-  await page.getByLabel("Time zone").fill("Mars/Olympus");
-  await page.getByRole("button", { name: "Save profile" }).click();
-  await expect(page.locator("p[role=alert]")).toContainText("Unknown time zone");
+  await hydrated(page);
+  const select = page.getByLabel("Time zone");
+  expect(await select.evaluate((el) => (el as HTMLSelectElement).options.length)).toBeGreaterThan(100);
+  await select.selectOption("Asia/Tokyo");
+  await expect(select).toHaveValue("Asia/Tokyo");
+  await page.getByRole("button", { name: "Use this device's time zone" }).click();
+  await expect(select).not.toHaveValue("Asia/Tokyo");
+});
+
+test("an unknown time zone is rejected by the server", async ({ page }) => {
+  await loginAs(page, "carol@e2e.test", MONDAY);
+  const res = await page.request.patch("/api/profile", { data: { timeZone: "Mars/Olympus" } });
+  expect(res.status()).toBe(400);
+  expect(JSON.stringify(await res.json())).toContain("Unknown time zone");
 });
 
 test("AT-01 style: a member cannot edit (or read) another member's profile, and neither can the owner edit it", async ({ browser }) => {

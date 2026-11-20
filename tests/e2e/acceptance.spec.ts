@@ -53,9 +53,9 @@ test("AT-03: Member requests the public feed → only public fields; no weight, 
   expect(feed.status()).toBe(200);
   const text = await feed.text();
   for (const secret of ["AT03-PRIVATE-NOTE", "68.25", "171.5", "6.5"]) expect(text).not.toContain(secret);
-  expect(text).not.toMatch(/weight|height|protein|waterTarget|runTarget|studyMin|limits|privateNotes|email|passwordHash/i);
+  expect(text).not.toMatch(/weight|height|proteinG|proteinTarget|proteinMultiplier|waterTarget|runTarget|studyMin|limits|privateNotes|email|passwordHash/i);
   for (const m of (JSON.parse(text).members as Record<string, unknown>[])) {
-    expect(Object.keys(m).sort()).toEqual(["avatarUrl", "commitmentPct", "dayNumber", "displayName", "id", "isMe", "streak", "todayDone", "todayTotal", "updateText"]);
+    expect(Object.keys(m).sort()).toEqual(["avatarUrl", "commitmentPct", "dayNumber", "displayName", "doneTasks", "id", "isMe", "requiredTasks", "streak", "todayDone", "todayTotal", "updateText"]);
   }
   // the progress list is public too, and just as clean
   expect(await (await reader.page.request.get("/api/progress")).text()).not.toMatch(/weight|privateNotes|AT03/i);

@@ -16,6 +16,8 @@ export type PublicMember = {
   streak: number;
   updateText: string | null;
   commitmentPct: number;
+  doneTasks: string[]; // today's ticked task names (no amounts)
+  requiredTasks: string[]; // today's required task names
 };
 
 type PublicMemberInput = {
@@ -28,6 +30,8 @@ type PublicMemberInput = {
   streak?: number;
   updateText?: string | null;
   commitmentPct?: number;
+  doneTasks?: string[];
+  requiredTasks?: string[];
   // Anything else on the object (weight, limits, private notes, ...) is ignored by design.
 };
 
@@ -42,6 +46,8 @@ export function publicMember(m: PublicMemberInput): PublicMember {
     streak: m.streak ?? 0,
     updateText: m.updateText ?? null,
     commitmentPct: m.commitmentPct ?? 0,
+    doneTasks: [...(m.doneTasks ?? [])],
+    requiredTasks: [...(m.requiredTasks ?? [])],
   };
 }
 
