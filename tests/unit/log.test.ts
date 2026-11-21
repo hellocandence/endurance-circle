@@ -84,7 +84,8 @@ describe("log", () => {
   it("redacts fields and error details end to end", () => {
     log.error("save failed", { password: "hunter2", weightKg: 70, photo: "BYTES" });
     log.error("db down", new Error('Failed query: select ... params: a@example.com,hash'));
-    const all = lines.join("\n");
+    // The timestamp is not a log field we are checking (and its milliseconds can contain "70"), so leave it out.
+    const all = lines.map((l) => { const row = JSON.parse(l); delete row.time; return JSON.stringify(row); }).join("\n");
     for (const secret of ["hunter2", "70", "BYTES", "a@example.com", "params:"]) expect(all).not.toContain(secret);
     expect(JSON.parse(lines[1]).error.message).toBe("database query failed");
   });
