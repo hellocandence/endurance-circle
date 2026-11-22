@@ -8,10 +8,10 @@ services:
     runtime: node
     region: singapore # closest Render region to India; change if your friends are elsewhere
     plan: free # sleeps after ~15 min idle. Use "starter" for always-on (a keep-alive ping of /api/health also works)
-    buildCommand: pnpm install --frozen-lockfile && pnpm build
-    # Migrations and the owner seed are idempotent, so they run on every start. On a paid plan you can move
-    # `pnpm db:migrate` to preDeployCommand instead (free web services do not support pre-deploy commands).
-    startCommand: pnpm db:migrate && pnpm db:seed && pnpm start
+    buildCommand: pnpm install --frozen-lockfile && pnpm build && pnpm db:migrate && pnpm db:seed
+    # Migrations and the owner seed are idempotent. They run at build time (free web services have no pre-deploy command)
+    # so a cold start after sleep is just `next start` (~10s) and keep-alive pings never time out.
+    startCommand: pnpm start
     healthCheckPath: /api/health
     autoDeployTrigger: checksPass # deploy each new commit on main, but only after the GitHub Actions CI checks pass
     envVars:
