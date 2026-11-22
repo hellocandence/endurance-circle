@@ -1,6 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import { E2E_PORT as PORT } from "./tests/e2e/setup/constants";
 
+// Tests must never send real mail: Next auto-loads .env.local (which holds the Gmail credentials), and a blank value
+// set here wins over it, so getMailer() falls back to the dev mailer.
+const NO_MAIL = { GMAIL_CLIENT_ID: "", GMAIL_CLIENT_SECRET: "", GMAIL_REFRESH_TOKEN: "", SMTP_USER: "", SMTP_PASS: "", BREVO_API_KEY: "", RESEND_API_KEY: "" };
 const REAL_DB = process.env.E2E_DATABASE_URL;
 
 export default defineConfig({
@@ -23,7 +26,7 @@ export default defineConfig({
   webServer: {
     command: `${REAL_DB ? "pnpm exec tsx tests/e2e/setup/reset-db.ts" : "rm -rf .data/e2e"} && pnpm db:migrate && pnpm exec tsx tests/e2e/setup/seed.ts && pnpm exec next dev --turbopack -p ${PORT}`,
     url: `http://localhost:${PORT}`,
-    env: { PGLITE_DIR: ".data/e2e", AUTH_URL: `http://localhost:${PORT}`, DATABASE_URL: REAL_DB ?? "" },
+    env: { ...NO_MAIL, PGLITE_DIR: ".data/e2e", AUTH_URL: `http://localhost:${PORT}`, DATABASE_URL: REAL_DB ?? "" },
     reuseExistingServer: false,
     timeout: 180_000,
   },
