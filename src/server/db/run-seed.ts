@@ -9,7 +9,7 @@ async function main() {
   const handle = createDb();
   try {
     const res = await seed(handle.db, { ownerEmail: process.env.OWNER_EMAIL ?? "" });
-    log.info("seed ok", { driver: handle.kind, ownerId: res.ownerId, commitment: res.createdCommitment ? "created" : "already present" });
+    log.info("seed ok", { driver: handle.kind, ownerId: res.ownerId});
   } finally {
     await handle.close();
   }

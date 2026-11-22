@@ -17,6 +17,7 @@
     "db:generate": "drizzle-kit generate",
     "db:seed": "tsx src/server/db/run-seed.ts",
     "owner:password": "tsx scripts/set-owner-password.ts",
+    "challenge:reset": "tsx scripts/reset-challenge.ts",
     "gmail:token": "tsx scripts/gmail-token.ts"
   },
   "dependencies": {
