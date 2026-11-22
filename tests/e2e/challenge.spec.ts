@@ -1,68 +1,83 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test } from "@playwright/test";
-import { hydrated, loginAs, MONDAY } from "./helpers";
+import { hydrated, loginAs, MONDAY, SUNDAY } from "./helpers";
 
-// One member (Planner) walks the whole start-date story, so these run in order. The server clock is pinned to Monday 2026-11-23.
+// The circle-wide fresh start (Day 1 = Monday 2026-11-23 for everyone) and the owner-only restart.
+// Planner has no programme yet; the first tests walk her through the start, so they run in order.
 test.describe.configure({ mode: "serial" });
 
-test("starting and restarting needs a session", async ({ request }) => {
+const NO_UUID = "00000000-0000-4000-8000-000000000000";
+
+test("starting, joining and restarting all need a session", async ({ request }) => {
   expect((await request.post("/api/tracker/start", { data: {} })).status()).toBe(401);
-  expect((await request.post("/api/tracker/restart", { data: {} })).status()).toBe(401);
+  expect((await request.post("/api/tracker/join", { data: {} })).status()).toBe(401);
+  expect((await request.post("/api/admin/challenge/restart", { data: { scope: "all" } })).status()).toBe(401);
 });
 
-test("a new member can schedule Day 1 for a later date, see the countdown, and start today instead", async ({ page }) => {
-  await loginAs(page, "planner@e2e.test", MONDAY);
+test("the day before, a new member can join the new challenge and sees the countdown", async ({ page }) => {
+  await loginAs(page, "planner@e2e.test", SUNDAY);
   await page.goto("/today");
   await hydrated(page);
-  await expect(page.getByRole("heading", { name: "Ready to begin?" })).toBeVisible();
-
-  // the choices
-  await expect(page.getByRole("radio", { name: /Today/ })).toBeChecked();
-  await page.getByRole("radio", { name: /Pick a date/ }).check();
-  await page.getByLabel("Start date").fill("2026-11-30");
-  await page.getByRole("button", { name: "Schedule my 75 Hard" }).click();
-
-  await expect(page.getByRole("heading", { name: /starts Monday, 30 November/ })).toBeVisible();
-  await expect(page.getByText("That is in 7 days.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: /A new challenge starts Monday, 23 November/ })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const { violations } = await new AxeBuilder({ page }).analyze();
   expect(violations.filter((v) => v.impact === "serious" || v.impact === "critical").map((v) => `${v.id}: ${v.nodes[0]?.html}`)).toEqual([]);
 
-  // nothing to log yet, and the API says so
-  const today = await page.request.get("/api/tracker/today");
-  expect(today.status()).toBe(409);
-  expect(await today.json()).toMatchObject({ error: "not_started_yet", startDate: "2026-11-30" });
-
-  await page.getByRole("button", { name: "Start today instead" }).click();
-  await expect(page.getByRole("heading", { name: /Day 1/ })).toBeVisible();
+  await page.getByRole("button", { name: "Count me in" }).click();
+  await expect(page.getByRole("heading", { name: /starts Monday, 23 November/ })).toBeVisible();
+  await expect(page.getByText("That is tomorrow.")).toBeVisible();
+  // no controls to move the date, and nothing to log yet
+  await expect(page.getByRole("button", { name: /Start today instead|Change start date/ })).toHaveCount(0);
+  expect((await page.request.get("/api/tracker/today")).status()).toBe(409);
 });
 
-test("Settings shows the challenge and restarts it on a chosen date without deleting anything", async ({ page }) => {
+test("on Monday the same member is on Day 1, with a fresh log", async ({ page }) => {
+  await loginAs(page, "planner@e2e.test", MONDAY);
+  await page.goto("/today");
+  await hydrated(page);
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 1");
+});
+
+test("a regular member has no Restart option and the server refuses every restart", async ({ page }) => {
   await loginAs(page, "planner@e2e.test", MONDAY);
   await page.goto("/settings");
   await hydrated(page);
   const section = page.getByRole("region", { name: "Challenge" });
   await expect(section.getByText(/Day 1 of 75\. Started Mon, 23 Nov/)).toBeVisible();
+  await expect(section.getByRole("button", { name: /Restart/ })).toHaveCount(0);
 
-  await section.getByRole("button", { name: "Restart challenge" }).click();
-  await expect(section.getByText(/kept safely and not deleted/)).toBeVisible();
-  await section.getByRole("radio", { name: /Pick a date/ }).check();
-  await section.getByLabel("Start date").fill("2026-12-07");
-  await section.getByRole("button", { name: "Yes, restart" }).click();
-  await expect(section.getByText(/Fresh start\. Day 1 is Mon, 7 Dec/)).toBeVisible();
-  await expect(section.getByText(/Starts Mon, 7 Dec \(in 14 days\)/)).toBeVisible();
-
+  for (const data of [{ scope: "self" }, { scope: "all" }, { scope: "user", userId: NO_UUID }]) {
+    expect((await page.request.post("/api/admin/challenge/restart", { data })).status(), JSON.stringify(data)).toBe(403);
+  }
+  expect((await page.request.post("/api/tracker/restart", { data: {} })).ok()).toBe(false); // the old member route is gone
+  // and nothing changed
   await page.goto("/today");
-  await expect(page.getByRole("heading", { name: /starts Monday, 7 December/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 1");
 });
 
-test("the server refuses past dates, dates too far ahead and nonsense", async ({ page }) => {
-  await loginAs(page, "planner@e2e.test", MONDAY);
+test("the owner sees the restart controls with the three options", async ({ page }) => {
+  await loginAs(page, "owner@e2e.test", MONDAY);
+  await page.goto("/settings");
+  await hydrated(page);
+  const section = page.getByRole("region", { name: "Challenge" });
+  await section.getByRole("button", { name: "Restart challenge (owner)" }).click();
+  for (const name of ["My own challenge", "Everyone's challenge", "One member's challenge"]) await expect(section.getByRole("radio", { name })).toBeVisible();
+  await section.getByRole("radio", { name: "One member's challenge" }).check();
+  await expect(section.getByRole("button", { name: "Yes, restart" })).toBeDisabled(); // no member picked yet
+  await section.getByRole("radio", { name: "Everyone's challenge" }).check();
+  await expect(section.getByText(/restarts the challenge for all \d+ members/)).toBeVisible();
+});
+
+test("the owner endpoint validates input and refuses bad dates without changing anything", async ({ page }) => {
+  await loginAs(page, "owner@e2e.test", MONDAY);
+  const post = (data: unknown) => page.request.post("/api/admin/challenge/restart", { data });
+  expect((await post({ scope: "nobody" })).status()).toBe(400);
+  expect((await post({ scope: "user" })).status()).toBe(400); // user id required
+  expect((await post({ scope: "user", userId: NO_UUID })).status()).toBe(404);
   for (const startDate of ["2026-11-01", "2027-06-01", "2026-02-30", "soon"]) {
-    const res = await page.request.post("/api/tracker/restart", { data: { startDate } });
-    expect(res.status(), startDate).toBe(400);
+    expect((await post({ scope: "all", startDate })).status(), startDate).toBe(400);
   }
-  // and a refused restart changed nothing
+  // refused restarts left everyone's programme alone
   await page.goto("/today");
-  await expect(page.getByRole("heading", { name: /starts Monday, 7 December/ })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/Day \d+/);
 });

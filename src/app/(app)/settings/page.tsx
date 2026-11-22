@@ -43,7 +43,7 @@ export default async function SettingsPage() {
       <ProfileForm profile={profile} />
       <Link href="/install" className="glass glass-focus rounded-2xl p-4 text-center font-medium text-accent-strong">Install Cadence on your phone</Link>
       <PhotoUploader userId={profile.id} avatarPhotoId={profile.avatarPhotoId} name={profile.name} />
-      <ChallengeSection programme={programme} />
+      <ChallengeSection programme={programme} members={admin?.members ?? null} />
       <BodyLimitsForm body={body} />
       <SecurityForm hasPassword={passwordHash !== null} />
       {admin && <AdminPanel invites={admin.invites} members={admin.members} meId={actor.id} />}

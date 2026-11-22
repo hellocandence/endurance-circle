@@ -121,3 +121,16 @@ describe("default deny", () => {
     expect(can(alice, "read", { kind: "body", ownerId: 7 as unknown as string })).toBe(false);
   });
 });
+
+describe("challenge restart (owner only)", () => {
+  const owner = { id: "o1", role: "OWNER" as const };
+  const member = { id: "m1", role: "MEMBER" as const };
+  it("only the owner can administer challenges, and only with the admin action", () => {
+    expect(can(owner, "admin", { kind: "challenge" })).toBe(true);
+    for (const a of ["read", "write", "invite", "remove"] as const) expect(can(owner, a, { kind: "challenge" })).toBe(false);
+    for (const a of ["read", "write", "invite", "remove", "admin"] as const) {
+      expect(can(member, a, { kind: "challenge" })).toBe(false);
+      expect(can(null, a, { kind: "challenge" })).toBe(false);
+    }
+  });
+});

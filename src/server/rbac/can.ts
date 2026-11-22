@@ -13,6 +13,7 @@ export type Resource =
   | { kind: "avatar"; ownerId: string } // the public 128 px picture shown on cards
   | { kind: "photo"; ownerId: string } // the full 512 px profile photo
   | { kind: "invite" }
+  | { kind: "challenge" } // restart anyone's 75 Hard: owner only
   | { kind: "member"; memberId: string };
 
 export type Actor = { id: string; role: Role };
@@ -53,6 +54,9 @@ export function can(user: Actor | null | undefined, action: Action, r: Resource)
 
     case "invite": // create, revoke, list: owner only
       return owner && (action === "invite" || action === "read" || action === "admin");
+
+    case "challenge":
+      return owner && action === "admin";
 
     case "member":
       // Removing a member: owner only, never the owner themselves (BR2). Role changes: nobody (single owner in v1).

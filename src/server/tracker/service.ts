@@ -1,4 +1,5 @@
 import { and, desc, eq } from "drizzle-orm";
+import { audit } from "@/server/admin/service";
 import type { Db } from "@/server/db/client";
 import { bodyMetrics, commitments, dailyLogs, users } from "@/server/db/schema";
 import { addDays, daysBetween, isDateString, isSunday, localDate } from "./dates";
@@ -10,6 +11,10 @@ type LogRow = typeof dailyLogs.$inferSelect;
 
 export type TrackerError = "no_active_commitment" | "invalid_date" | "before_start" | "in_future" | "locked" | "not_started_yet";
 export type Result<T> = ({ ok: true } & T) | { ok: false; error: TrackerError; startDate?: string };
+
+/** Day 1 of the circle-wide fresh start (Monday). Members who have not joined by COHORT_GRACE_DAYS later pick their own date. */
+export const COHORT_START = "2026-11-23";
+export const COHORT_GRACE_DAYS = 6;
 
 /** Today and yesterday can be edited (so a late-night log still lands on the right day). */
 const EDITABLE_DAYS_BACK = 1;
@@ -242,6 +247,62 @@ export async function restartProgram(db: Db, userId: string, now = new Date(), s
     await tx.insert(commitments).values({ userId, startDate: chosen });
   });
   return { ok: true, startDate: chosen };
+}
+
+export type RestartScope = { scope: "self" } | { scope: "all" } | { scope: "user"; userId: string };
+export type AdminRestartResult = { ok: true; restarted: number; startDate: string | null } | { ok: false; error: "invalid_date" | "not_found" };
+
+/**
+ * Owner action. Restart the owner's own, everyone's, or one member's programme. Each target is restarted by
+ * restartProgram (their own row set only) inside one transaction, so a bad date or a missing user changes nothing.
+ * Removed (disabled) members are skipped by "all".
+ */
+export async function adminRestart(db: Db, actorId: string, target: RestartScope, now = new Date(), startDate?: string): Promise<AdminRestartResult> {
+  class Abort extends Error {
+    constructor(readonly error: "invalid_date" | "not_found") {
+      super(error);
+    }
+  }
+  try {
+    return await db.transaction(async (tx) => {
+    let ids: string[];
+    if (target.scope === "self") ids = [actorId];
+    else if (target.scope === "user") {
+      const [u] = await tx.select({ id: users.id }).from(users).where(eq(users.id, target.userId)).limit(1);
+      if (!u) throw new Abort("not_found");
+      ids = [u.id];
+    } else ids = (await tx.select({ id: users.id }).from(users).where(eq(users.disabled, false))).map((u) => u.id);
+
+    let chosen: string | null = null;
+    for (const id of ids) {
+      const r = await restartProgram(tx as unknown as Db, id, now, startDate);
+      if (!r.ok) throw new Abort(r.error);
+      chosen ??= r.startDate;
+    }
+    await audit(tx, actorId, `challenge.restart.${target.scope}`, target.scope === "user" ? target.userId : undefined);
+    return { ok: true as const, restarted: ids.length, startDate: chosen };
+    });
+  } catch (e) {
+    if (e instanceof Abort) return { ok: false, error: e.error };
+    throw e;
+  }
+}
+
+/**
+ * The fresh start for everyone. Until COHORT_GRACE_DAYS after COHORT_START a member with no programme is offered
+ * this instead of a free date: Day 1 is COHORT_START for the whole circle. Idempotent.
+ */
+export async function joinCohort(db: Db, userId: string): Promise<{ created: boolean }> {
+  const [existing] = await db.select({ id: commitments.id }).from(commitments).where(and(eq(commitments.userId, userId), eq(commitments.active, true))).limit(1);
+  if (existing) return { created: false };
+  await db.insert(commitments).values({ userId, startDate: COHORT_START });
+  return { created: true };
+}
+
+/** True while a member with no programme should be shown the circle-wide start instead of the free-date picker. */
+export async function cohortOpen(db: Db, userId: string, now = new Date()): Promise<{ open: boolean; startDate: string; today: string }> {
+  const today = await localToday(db, userId, now);
+  return { open: today <= addDays(COHORT_START, COHORT_GRACE_DAYS), startDate: COHORT_START, today };
 }
 
 export type ProgrammeInfo = { startDate: string; totalDays: number; today: string; started: boolean; dayNumber: number | null; daysUntilStart: number };

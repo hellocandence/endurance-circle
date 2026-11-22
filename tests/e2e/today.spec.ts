@@ -202,12 +202,12 @@ test.describe("Sunday", () => {
   });
 });
 
-test("a new member can start their 75 Hard (Day 1 begins today)", async ({ page }) => {
+test("on Monday 23 Nov a new member sees 'the new challenge starts today' and starts it (Day 1)", async ({ page }) => {
   await loginAs(page, "fresh@e2e.test", MONDAY);
   await page.goto("/today");
   await hydrated(page);
-  await expect(page.getByRole("heading", { name: "Ready to begin?" })).toBeVisible();
-  await page.getByRole("button", { name: "Start my 75 Hard" }).click();
+  await expect(page.getByRole("heading", { name: "The new challenge starts today" })).toBeVisible();
+  await page.getByRole("button", { name: "Start the new challenge" }).click();
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Day 1");
   await expect(page.getByText("Add your weight in Settings")).toBeVisible();
 });
