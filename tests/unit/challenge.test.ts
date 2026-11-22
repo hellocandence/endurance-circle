@@ -161,8 +161,8 @@ describe("the circle-wide fresh start", () => {
   it("is fixed at Monday 23 Nov for everyone, and idempotent", async () => {
     expect(COHORT_START).toBe(MON);
     const a = await member();
-    expect(await joinCohort(db(), a)).toEqual({ created: true });
-    expect(await joinCohort(db(), a)).toEqual({ created: false });
+    expect(await joinCohort(db(), a, FRI)).toEqual({ created: true });
+    expect(await joinCohort(db(), a, FRI)).toEqual({ created: false });
     expect((await active(a))[0].startDate).toBe(MON);
     expect(await getToday(db(), a, FRI)).toMatchObject({ ok: false, error: "not_started_yet", startDate: MON });
     const mon = await getToday(db(), a, new Date("2026-11-23T06:00:00Z"));
@@ -174,5 +174,14 @@ describe("the circle-wide fresh start", () => {
     expect(await cohortOpen(db(), a, FRI)).toMatchObject({ open: true, startDate: MON });
     expect((await cohortOpen(db(), a, new Date("2026-11-29T06:00:00Z"))).open).toBe(true);
     expect((await cohortOpen(db(), a, new Date("2026-11-30T06:00:00Z"))).open).toBe(false);
+  });
+
+  it("refuses to join once the window has closed, and parallel joins make one programme", async () => {
+    const late = await member();
+    expect(await joinCohort(db(), late, new Date("2026-11-30T06:00:00Z"))).toEqual({ error: "closed" });
+    expect(await rows(late)).toHaveLength(0);
+    const a = await member();
+    await Promise.all([joinCohort(db(), a, FRI), joinCohort(db(), a, FRI), joinCohort(db(), a, FRI)]);
+    expect(await active(a)).toHaveLength(1);
   });
 });

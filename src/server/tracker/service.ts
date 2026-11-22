@@ -292,11 +292,17 @@ export async function adminRestart(db: Db, actorId: string, target: RestartScope
  * The fresh start for everyone. Until COHORT_GRACE_DAYS after COHORT_START a member with no programme is offered
  * this instead of a free date: Day 1 is COHORT_START for the whole circle. Idempotent.
  */
-export async function joinCohort(db: Db, userId: string): Promise<{ created: boolean }> {
-  const [existing] = await db.select({ id: commitments.id }).from(commitments).where(and(eq(commitments.userId, userId), eq(commitments.active, true))).limit(1);
-  if (existing) return { created: false };
-  await db.insert(commitments).values({ userId, startDate: COHORT_START });
-  return { created: true };
+export async function joinCohort(db: Db, userId: string, now = new Date()): Promise<{ created: boolean } | { error: "closed" }> {
+  return db.transaction(async (tx) => {
+    // Lock the member's row so two parallel requests cannot both pass the check below and create two active programmes.
+    await tx.select({ id: users.id }).from(users).where(eq(users.id, userId)).for("update");
+    const [existing] = await tx.select({ id: commitments.id }).from(commitments).where(and(eq(commitments.userId, userId), eq(commitments.active, true))).limit(1);
+    if (existing) return { created: false };
+    // The window is enforced here, not only by the Today screen: after it closes nobody can claim a backdated Day 1.
+    if (!(await cohortOpen(tx as unknown as Db, userId, now)).open) return { error: "closed" as const };
+    await tx.insert(commitments).values({ userId, startDate: COHORT_START });
+    return { created: true };
+  });
 }
 
 /** True while a member with no programme should be shown the circle-wide start instead of the free-date picker. */
