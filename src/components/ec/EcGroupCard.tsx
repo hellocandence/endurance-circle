@@ -38,6 +38,7 @@ export function EcGroupCard({ group, isOwner }: { group: GroupSettings; isOwner:
     <Section title="Group reminder" description="One message a day to the circle's WhatsApp group, asking everyone to update their log. It doesn't tag anyone.">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Toggle label="Daily group reminder" checked={enabled} onChange={setEnabled} />
+        <p className="text-sm text-ink-muted">The app sleeps from 11:59 PM to 6:00 AM, so pick a time between 6:00 AM and 11:59 PM. It can arrive up to 15 minutes late.</p>
         <Field label="Time (your time zone)" type="time" value={time} min={EARLIEST} max={LATEST} onChange={(e) => setTime(e.target.value)} required />
         {group.lastSentAt && <p className="text-sm text-ink-muted">Last sent {new Date(group.lastSentAt).toLocaleString()}.</p>}
         {status.kind === "ok" && <FormMessage kind="success">{status.text}</FormMessage>}

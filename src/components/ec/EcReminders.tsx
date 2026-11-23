@@ -49,7 +49,7 @@ export function EcReminders({ mine, timeZone }: { mine: MySettings; timeZone: st
   }
 
   return (
-    <Section title="Your reminders" description={`Personal nudges in the WhatsApp group that tag only you. Times are in your time zone (${timeZone}), between ${EARLIEST} and ${LATEST}.`}>
+    <Section title="Your reminders" description={`Personal nudges in the WhatsApp group that tag only you. Times are in your time zone (${timeZone}), between ${EARLIEST} and ${LATEST}. The app sleeps from 11:59 PM to 6:00 AM, so nothing is sent then. Reminders can arrive up to 15 minutes after the time you pick.`}>
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Field label="Your WhatsApp number" type="tel" inputMode="tel" value={number} onChange={(e) => setNumber(e.target.value)} maxLength={24} placeholder="919876543210" hint="With country code. Needed so the bot can tag you. Only you and the owner can see it." autoComplete="tel" />
 
