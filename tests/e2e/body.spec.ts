@@ -8,7 +8,7 @@ test("AT-05: body routes need a session", async ({ request }) => {
   expect((await request.patch("/api/body", { data: { weightKg: 70 } })).status()).toBe(401);
 });
 
-test("AT-01 and AT-04: other members get 403, the owner can read, nobody but the member can edit", async ({ browser }) => {
+test("AT-01 and AT-04: everyone in the circle can read body metrics (T104), nobody but the member can edit", async ({ browser }) => {
   const base = test.info().project.use.baseURL;
   const open = async (email: string) => {
     const ctx = await browser.newContext({ baseURL: base });
@@ -20,11 +20,11 @@ test("AT-01 and AT-04: other members get 403, the owner can read, nobody but the
   const daveId = await meId(dave.page);
 
   const bob = await open("bob@e2e.test"); // AT-01: member A requests member B's body metrics
-  const denied = await bob.page.request.get(`/api/members/${daveId}/body`);
-  expect(denied.status()).toBe(403);
-  expect(await denied.text()).not.toMatch(/75|weight/i);
+  const seen = await bob.page.request.get(`/api/members/${daveId}/body`);
+  expect(seen.status()).toBe(200);
+  expect(await seen.json()).toMatchObject({ userId: daveId, weightKg: expect.any(Number), proteinTargetG: expect.any(Number) }); // another test edits Dave's own weight
   expect((await bob.page.request.patch(`/api/members/${daveId}/body`, { data: { weightKg: 50 } })).status()).toBe(403);
-  expect((await bob.page.request.get("/api/members/00000000-0000-4000-8000-000000000000/body")).status()).toBe(403); // cannot probe ids
+  expect((await bob.page.request.get("/api/members/00000000-0000-4000-8000-000000000000/body")).status()).toBe(404);
 
   const owner = await open("owner@e2e.test"); // AT-04: owner requests any member's body metrics
   const allowed = await owner.page.request.get(`/api/members/${daveId}/body`);
@@ -55,7 +55,7 @@ test("Settings shows the limits form with a live protein target", async ({ page 
   await loginAs(page, "carol@e2e.test", MONDAY);
   await page.goto("/settings");
   expect(page.viewportSize()!.width).toBe(375);
-  await expect(page.getByText("Private: only you and the circle owner can see these.")).toBeVisible();
+  await expect(page.getByText("Everyone in the circle can see these on your Progress page. They set your daily targets.")).toBeVisible();
   await expect(page.getByText("Protein target: 72 g a day")).toBeVisible(); // 60 kg × 1.2
   await page.getByLabel("Weight").fill("65");
   await expect(page.getByText("Protein target: 78 g a day")).toBeVisible();

@@ -14,7 +14,7 @@ export default function PrivacyPage() {
       <ul className="list-disc space-y-1 pl-5 text-neutral-700">
         <li>Your name, email address and profile (photo and bio, if you add them).</li>
         <li>Your daily habit entries and progress, shared with the circle as you choose in Settings.</li>
-        <li>Body metrics, if you enter any. They are visible only to you and the owner of the circle, never in public views.</li>
+        <li>Body metrics and notes, if you enter any. Everyone signed in to the circle can see them on your Progress page. Nobody outside the circle can, and nobody can edit them but you.</li>
         <li>If you sign in with Google, we receive your name, email address and whether Google has verified that address. Nothing else from your Google account.</li>
       </ul>
 

@@ -20,26 +20,30 @@ async function as(browser: Browser, email: string, now = MONDAY) {
   return { ctx, page };
 }
 
-test("AT-01: Member A requests Member B's body metrics via API → 403", async ({ browser }) => {
+// T104 (owner decision 2026-11-23): the circle is open to read, so AT-01/AT-02 now prove the part that must stay
+// closed: nobody can WRITE another member's data. Reads of body metrics and journeys return 200 for any member.
+test("AT-01: Member A reads Member B's body metrics → 200, but cannot edit them → 403", async ({ browser }) => {
   const b = await as(browser, "dave@e2e.test");
   const dave = await idOf(b.page);
   const a = await as(browser, "bob@e2e.test");
   const res = await a.page.request.get(`/api/members/${dave}/body`);
-  expect(res.status()).toBe(403);
-  expect(await res.text()).not.toMatch(/weight|75|protein/i); // not even a hint in the error body
+  expect(res.status()).toBe(200);
+  expect(await res.json()).toMatchObject({ userId: dave, weightKg: expect.any(Number), proteinTargetG: expect.any(Number) });
   expect((await a.page.request.patch(`/api/members/${dave}/body`, { data: { weightKg: 50 } })).status()).toBe(403);
+  expect((await (await b.page.request.get("/api/body")).json()).weightKg).not.toBe(50); // unchanged
   await a.ctx.close();
   await b.ctx.close();
 });
 
-test("AT-02: Member A requests Member B's private journey → 403", async ({ browser }) => {
+test("AT-02: Member A reads Member B's journey including notes → 200; there is no route to write it", async ({ browser }) => {
   const b = await as(browser, "carol@e2e.test");
   const carol = await idOf(b.page);
   await b.page.request.put("/api/tracker/2026-11-23", { data: { privateNotes: "AT02-SECRET" } });
   const a = await as(browser, "bob@e2e.test");
   const res = await a.page.request.get(`/api/members/${carol}/journey`);
-  expect(res.status()).toBe(403);
-  expect(await res.text()).not.toContain("AT02-SECRET");
+  expect(res.status()).toBe(200);
+  expect(await res.text()).toContain("AT02-SECRET");
+  expect((await a.page.request.get(`/api/members/${ZERO}/journey`)).status()).toBe(404); // unknown member
   await a.ctx.close();
   await b.ctx.close();
 });
@@ -160,13 +164,18 @@ test("AT-09: Sunday, the run is not required and stretch is → the day complete
   await m.ctx.close();
 });
 
-test("AT-10: a missed task is logged and the day count continues", async ({ browser }) => {
-  const m = await as(browser, "dave@e2e.test", SUNDAY); // "now" is Sunday 2026-11-22, day 22; Saturday 11-21 is yesterday
+test("AT-10: a missed task is logged once the day ends (the day is then locked) and the day count continues", async ({ browser }) => {
+  const SATURDAY = "2026-11-21T06:00:00Z";
+  const m = await as(browser, "dave@e2e.test", SATURDAY);
   const sat = await (await m.page.request.put("/api/tracker/2026-11-21", { data: { runKm: 5, warmupPreDone: true, warmupPostDone: true, waterL: 3 } })).json();
   expect(sat.dayNumber).toBe(21);
   expect(sat.evaluation.completed).toBe(false);
-  expect(sat.evaluation.missed).toEqual(expect.arrayContaining(["ELECTRO", "PROTEIN", "STUDY", "TECH", "GITHUB", "SATSANG"])); // logged as missed
-  expect(sat.log.missedTasks).toEqual(sat.evaluation.missed); // and stored
+  expect(sat.evaluation.missed).toEqual([]); // still running: nothing is missed yet
+
+  await loginAs(m.page, "dave@e2e.test", SUNDAY); // the clock moves on: now Sunday 2026-11-22, day 22
+  const locked = await m.page.request.put("/api/tracker/2026-11-21", { data: { githubContribution: true } });
+  expect(locked.status()).toBe(409); // T105: a finished day can no longer be edited
+  expect((await locked.json()).error).toBe("locked");
 
   const today = await (await m.page.request.get("/api/tracker/today")).json();
   expect(today.dayNumber).toBe(22); // the count carried on, nothing reset
@@ -174,7 +183,9 @@ test("AT-10: a missed task is logged and the day count continues", async ({ brow
 
   const journey = await (await m.page.request.get("/api/journey/me")).json();
   expect(journey.programme.dayNumber).toBe(22);
-  expect(journey.logs.find((l: { logDate: string }) => l.logDate === "2026-11-21").completed).toBe(false);
+  const saturday = journey.logs.find((l: { logDate: string }) => l.logDate === "2026-11-21");
+  expect(saturday.completed).toBe(false);
+  expect(saturday.missedTasks).toEqual(expect.arrayContaining(["ELECTRO", "PROTEIN", "STUDY", "TECH", "GITHUB", "SATSANG"])); // logged as missed
   await m.ctx.close();
 });
 

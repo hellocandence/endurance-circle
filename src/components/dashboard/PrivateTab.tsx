@@ -23,7 +23,7 @@ export function PrivateTab({ journey }: { journey: MyJourney }) {
   ];
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-sm text-ink-muted">Only you and the circle owner can see this tab.</p>
+      <p className="text-sm text-ink-muted">Your own journey. Everyone in the circle can see your daily logs from Progress.</p>
       <dl className="grid grid-cols-2 gap-3">
         {tiles.map(([label, value]) => (
           <GlassCard key={label} className="p-4">
@@ -47,7 +47,7 @@ export function PrivateTab({ journey }: { journey: MyJourney }) {
                   </span>
                 </div>
                 {l.updateText && <p className="text-sm">{l.updateText}</p>}
-                {l.privateNotes && <p className="text-sm text-ink-muted">Private: {l.privateNotes}</p>}
+                {l.privateNotes && <p className="text-sm text-ink-muted">Note: {l.privateNotes}</p>}
               </GlassCard>
             </li>
           ))}

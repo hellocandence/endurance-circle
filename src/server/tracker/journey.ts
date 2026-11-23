@@ -2,8 +2,8 @@ import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@/server/db/client";
 import { commitments, dailyLogs, users } from "@/server/db/schema";
 import { completion, longestPerfectRun, perfectDaysInARow } from "./progress";
-import { dayNumber } from "./rules";
-import { localDate } from "./dates";
+import { dayNumber, requiredTasks } from "./rules";
+import { isSunday, localDate } from "./dates";
 
 /** Raw rows for one member's journey (the caller passes them through the privateJourney projection). */
 export async function getJourneyRows(db: Db, userId: string, now = new Date()) {
@@ -17,12 +17,15 @@ export async function getJourneyRows(db: Db, userId: string, now = new Date()) {
     .limit(1);
   if (!programme) return { programme: null, rows: [], stats: null };
 
-  const rows = await db
+  const today = localDate(now, user.timeZone);
+  const stored = await db
     .select()
     .from(dailyLogs)
     .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.commitmentId, programme.id)))
     .orderBy(desc(dailyLogs.logDate));
-  const today = localDate(now, user.timeZone);
+  // Days are locked once they end, so a miss can no longer be written by a later save (BR4): a finished day's
+  // missed tasks are its required tasks that were not ticked.
+  const rows = stored.map((r) => (r.logDate < today ? { ...r, missedTasks: requiredTasks(isSunday(r.logDate)).filter((k) => !r.doneTasks.includes(k)) } : r));
   const days = rows.map((r) => ({ date: r.logDate, completed: r.completed, doneCount: r.doneCount, requiredCount: r.requiredCount }));
   const win = { startDate: programme.startDate, today, totalDays: programme.totalDays };
 

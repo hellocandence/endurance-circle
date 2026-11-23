@@ -58,7 +58,7 @@ test("AT-01 style: a member cannot edit (or read) another member's profile, and 
   const bob = await open("bob@e2e.test");
   const edit = await bob.page.request.patch(`/api/members/${daveId}/profile`, { data: { name: "HACKED" } });
   expect(edit.status()).toBe(403);
-  expect((await bob.page.request.get(`/api/members/${daveId}/profile`)).status()).toBe(403);
+  expect((await bob.page.request.get(`/api/members/${daveId}/profile`)).status()).toBe(403); // the profile record holds the email, so it stays private
 
   const owner = await open("owner@e2e.test");
   expect((await owner.page.request.patch(`/api/members/${daveId}/profile`, { data: { name: "HACKED" } })).status()).toBe(403); // owner reads, never edits

@@ -8,9 +8,9 @@ import { WeekChart } from "@/components/progress/WeekChart";
 import { GlassCard } from "@/components/ui";
 import { requestNow } from "@/server/clock";
 import { getMemberAnalytics, getMyStats } from "@/server/dashboard/analytics";
+import { getMemberBody } from "@/server/dashboard/daily-logs";
 import { sessionActor } from "@/server/auth/session-user";
 import { getDb } from "@/server/db";
-import { can } from "@/server/rbac/can";
 
 export const metadata = { title: "Progress · Endurance Circle" };
 export const dynamic = "force-dynamic";
@@ -27,11 +27,8 @@ export default async function MemberProgressPage({ params }: { params: Promise<{
   const db = getDb();
   const now = await requestNow();
   const isMe = actor.id === userId;
-  // The detailed numbers read the full day rows, so they are loaded for the signed-in member's own page only.
-  const [member, mine] = await Promise.all([
-    getMemberAnalytics(db, userId, now),
-    isMe && can(actor, "read", { kind: "journey", ownerId: actor.id }) ? getMyStats(db, actor.id, now) : Promise.resolve(null),
-  ]);
+  // The circle is open (T104): everyone sees every member's totals, targets and body numbers.
+  const [member, totals, body] = await Promise.all([getMemberAnalytics(db, userId, now), getMyStats(db, userId, now), getMemberBody(db, actor, userId)]);
   if (!member) notFound();
 
   return (
@@ -42,9 +39,12 @@ export default async function MemberProgressPage({ params }: { params: Promise<{
           {member.name}
           {isMe && <span className="ml-2 rounded-full bg-white/70 px-2 py-0.5 align-middle text-xs font-medium text-accent-strong">You</span>}
         </h1>
-        {isMe && member.programme && (
-          <Link href="/progress/share" className="glass-focus hover-lift mt-2 inline-block rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-glass-press hover:bg-accent-strong">Share story</Link>
-        )}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <Link href={`/progress/${userId}/logs`} className="glass-focus hover-lift inline-block rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-glass-press hover:bg-accent-strong">{isMe ? "My daily logs" : "Daily logs"}</Link>
+          {isMe && member.programme && (
+            <Link href="/progress/share" className="glass-focus hover-lift inline-block rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-accent-strong shadow-glass-press hover:bg-white/90">Share story</Link>
+          )}
+        </div>
         <p className="text-ink-muted">
           {member.programme && member.dayNumber ? `Day ${member.dayNumber} of ${member.programme.totalDays}` : "Hasn't started the programme yet."}
         </p>
@@ -79,20 +79,38 @@ export default async function MemberProgressPage({ params }: { params: Promise<{
         </GlassCard>
       )}
 
-      {mine && (
-        <GlassCard className="flex flex-col gap-3 p-4" role="region" aria-label="Your private stats">
+      {body && (
+        <GlassCard className="flex flex-col gap-3 p-4" role="region" aria-label="Body and targets">
           <div>
-            <h2 className="font-semibold">Your private stats</h2>
-            <p className="text-sm text-ink-muted">Only you see this. It uses your own targets from Settings.</p>
+            <h2 className="font-semibold">Body and targets</h2>
+            <p className="text-sm text-ink-muted">Open to everyone in the circle. Only {isMe ? "you" : member.name} can change these.</p>
           </div>
           <dl className="grid grid-cols-2 gap-3 text-sm">
-            <div><dt className="text-ink-muted">Total run</dt><dd className="text-lg font-semibold">{mine.totals.runKm} km</dd></div>
-            <div><dt className="text-ink-muted">Study</dt><dd className="text-lg font-semibold">{mine.totals.studyHours} h</dd></div>
-            <div><dt className="text-ink-muted">Reading</dt><dd className="text-lg font-semibold">{mine.totals.readingMin} min</dd></div>
-            <div><dt className="text-ink-muted">Water per day</dt><dd className="text-lg font-semibold">{mine.totals.avgWaterL} L</dd></div>
+            <div><dt className="text-ink-muted">Weight</dt><dd className="text-lg font-semibold">{body.weightKg === null ? "Not set" : `${body.weightKg} kg`}</dd></div>
+            <div><dt className="text-ink-muted">Height</dt><dd className="text-lg font-semibold">{body.heightCm === null ? "Not set" : `${body.heightCm} cm`}</dd></div>
+            <div><dt className="text-ink-muted">Protein target</dt><dd className="text-lg font-semibold">{body.proteinTargetG === null ? "Not set" : `${body.proteinTargetG} g`}</dd></div>
+            <div><dt className="text-ink-muted">Run target</dt><dd className="text-lg font-semibold">{body.runTargetKm} km</dd></div>
+            <div><dt className="text-ink-muted">Water target</dt><dd className="text-lg font-semibold">{body.waterTargetL} L</dd></div>
+            <div><dt className="text-ink-muted">Study target</dt><dd className="text-lg font-semibold">{body.studyMinTarget} min</dd></div>
+          </dl>
+        </GlassCard>
+      )}
+
+      {totals && (
+        <GlassCard className="flex flex-col gap-3 p-4" role="region" aria-label="Totals">
+          <div>
+            <h2 className="font-semibold">Totals</h2>
+            <p className="text-sm text-ink-muted">Everything {isMe ? "you have" : "they have"} logged so far, against {isMe ? "your" : "their"} own targets.</p>
+          </div>
+          <dl className="grid grid-cols-2 gap-3 text-sm">
+            <div><dt className="text-ink-muted">Total run</dt><dd className="text-lg font-semibold">{totals.totals.runKm} km</dd></div>
+            <div><dt className="text-ink-muted">Study</dt><dd className="text-lg font-semibold">{totals.totals.studyHours} h</dd></div>
+            <div><dt className="text-ink-muted">Reading</dt><dd className="text-lg font-semibold">{totals.totals.readingMin} min</dd></div>
+            <div><dt className="text-ink-muted">Water per day</dt><dd className="text-lg font-semibold">{totals.totals.avgWaterL} L</dd></div>
+            <div><dt className="text-ink-muted">Protein per day</dt><dd className="text-lg font-semibold">{totals.totals.avgProteinG} g</dd></div>
           </dl>
           <div className="flex flex-col gap-3">
-            {mine.tasks.map((t) => (
+            {totals.tasks.map((t) => (
               <Bar key={t.key} label={t.label} value={t.pct} detail={`${t.done} of ${t.required} days`} />
             ))}
           </div>

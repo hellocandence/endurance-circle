@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { Db } from "@/server/db/client";
 import { bodyMetrics, dailyLogs } from "@/server/db/schema";
 import type { BodyMetricsRow } from "@/server/privacy";
-import { addDays, localDate } from "@/server/tracker";
+import { localDate } from "@/server/tracker";
 import { saveDay } from "@/server/tracker/service";
 import { users } from "@/server/db/schema";
 
@@ -37,8 +37,8 @@ export async function getBodyRow(db: Db, userId: string): Promise<BodyMetricsRow
 const str = (n: number | null | undefined) => (n === undefined ? undefined : n === null ? null : String(n));
 
 /**
- * Update the member's own limits. Targets decide what counts as "done", so today's and yesterday's stored
- * counts are recomputed afterwards (the circle feed reads those counts).
+ * Update the member's own limits. Targets decide what counts as "done", so today's stored counts are
+ * recomputed afterwards (the circle feed reads those counts). Finished days are locked and never change.
  */
 export async function updateBody(db: Db, userId: string, patch: BodyPatch, now = new Date()): Promise<BodyMetricsRow | null> {
   const [user] = await db.select({ timeZone: users.timeZone }).from(users).where(eq(users.id, userId)).limit(1);
@@ -57,9 +57,7 @@ export async function updateBody(db: Db, userId: string, patch: BodyPatch, now =
   await db.insert(bodyMetrics).values({ userId, ...set }).onConflictDoUpdate({ target: bodyMetrics.userId, set });
 
   const today = localDate(now, user.timeZone);
-  for (const date of [today, addDays(today, -1)]) {
-    const [existing] = await db.select({ id: dailyLogs.id }).from(dailyLogs).where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.logDate, date))).limit(1);
-    if (existing) await saveDay(db, userId, date, {}, now); // empty patch: just recompute
-  }
+  const [existing] = await db.select({ id: dailyLogs.id }).from(dailyLogs).where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.logDate, today))).limit(1);
+  if (existing) await saveDay(db, userId, today, {}, now); // empty patch: just recompute
   return getBodyRow(db, userId);
 }

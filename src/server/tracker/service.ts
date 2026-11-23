@@ -16,8 +16,11 @@ export type Result<T> = ({ ok: true } & T) | { ok: false; error: TrackerError; s
 export const COHORT_START = "2026-11-23";
 export const COHORT_GRACE_DAYS = 6;
 
-/** Today and yesterday can be edited (so a late-night log still lands on the right day). */
-const EDITABLE_DAYS_BACK = 1;
+/**
+ * Only today can be edited. When the member's local day ends, that day is locked for good (T105), so the
+ * daily logs are a faithful record.
+ */
+const EDITABLE_DAYS_BACK = 0;
 
 export const n = (v: string | number | null | undefined) => (v === null || v === undefined ? 0 : Number(v));
 

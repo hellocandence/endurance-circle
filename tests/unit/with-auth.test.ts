@@ -23,11 +23,16 @@ describe("withAuth", () => {
     expect(ran).toBe(false);
   });
 
-  it("403 when can() says no (AT-01: member reads another member's body metrics)", async () => {
+  it("403 when can() says no (AT-01: member edits another member's body metrics)", async () => {
     let ran = false;
-    const res = await as(alice)(body, () => ((ran = true), ok()))(req(), ctx({ id: "bob" }));
+    const write = { ...body, action: "write" as const };
+    const res = await as(alice)(write, () => ((ran = true), ok()))(req(), ctx({ id: "bob" }));
     expect(res.status).toBe(403);
     expect(ran).toBe(false);
+  });
+
+  it("200 when a member reads another member's body metrics (circle is open, T104)", async () => {
+    expect((await as(alice)(body, ok)(req(), ctx({ id: "bob" }))).status).toBe(200);
   });
 
   it("200 for own data, and for the owner reading anyone's (AT-04)", async () => {

@@ -23,7 +23,7 @@ test("public avatar is 128 px for every member; the full 512 px photo only for t
   const up = await carol.page.request.post("/api/photo", { multipart: { file: { name: "c.png", mimeType: "image/png", buffer: await png(700, 500) } } });
   expect(up.status()).toBe(201);
 
-  // another member: avatar yes, full photo no
+  // another member: avatar and full photo (the circle is open, T104)
   const bob = await open(browser, "bob@e2e.test");
   const avatar = await bob.page.request.get(`/api/photos/${carolId}?size=128`);
   expect(avatar.status()).toBe(200);
@@ -31,7 +31,7 @@ test("public avatar is 128 px for every member; the full 512 px photo only for t
   expect(await sharp(await avatar.body()).metadata()).toMatchObject({ format: "webp", width: 128, height: 128 });
   const byDefault = await bob.page.request.get(`/api/photos/${carolId}`); // no size means avatar
   expect(await sharp(await byDefault.body()).metadata()).toMatchObject({ width: 128 });
-  expect((await bob.page.request.get(`/api/photos/${carolId}?size=512`)).status()).toBe(403);
+  expect((await bob.page.request.get(`/api/photos/${carolId}?size=512`)).status()).toBe(200); // the full photo is open to the circle too (T104)
 
   // the member and the owner can open the full photo
   for (const who of [carol, await open(browser, "owner@e2e.test")]) {

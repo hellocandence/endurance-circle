@@ -65,7 +65,7 @@ test.describe("tabs", () => {
     await page.keyboard.press("ArrowRight");
     await expect(you).toBeFocused();
     await expect(you).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("tabpanel")).toContainText("Only you and the circle owner can see this tab.");
+    await expect(page.getByRole("tabpanel")).toContainText("Everyone in the circle can see your daily logs from Progress.");
     await page.keyboard.press("ArrowLeft");
     await expect(circle).toHaveAttribute("aria-selected", "true");
   });
@@ -77,7 +77,7 @@ test.describe("tabs", () => {
     await page.getByRole("tab", { name: "You" }).click();
     const panel = page.getByRole("tabpanel");
     await expect(panel).toContainText(/Day\s*23 \/ 75/);
-    await expect(panel).toContainText("Private: BOB-OWN-NOTE");
+    await expect(panel).toContainText("Note: BOB-OWN-NOTE");
     await expect(panel).not.toContainText("ALICE");
   });
 

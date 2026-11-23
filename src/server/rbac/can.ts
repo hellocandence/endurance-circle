@@ -34,25 +34,24 @@ export function can(user: Actor | null | undefined, action: Action, r: Resource)
     case "circle.public":
       return action === "read"; // any signed-in user
 
-    case "journey": // private daily logs (incl. private_notes)
-    case "profile":
-      if (action === "read") return owner || isSelf(r.ownerId);
-      if (action === "write") return isSelf(r.ownerId); // nobody edits someone else's
+    // Owner decision 2026-11-23 (T104): this is a closed circle of friends with nothing to hide from each other.
+    // Every signed-in member can READ everyone's journey, tracker, body metrics and photos. Only the member
+    // WRITES their own; nobody (the owner included) edits someone else's.
+    case "journey": // daily logs, including notes
+    case "body":
+    case "tracker":
+    case "photo":
+      if (action === "read") return true;
+      if (action === "write") return isSelf(r.ownerId);
       return false;
 
-    case "body": // BR3: the member and the owner only; only the member edits
-    case "tracker": // the owner can read a member's tracker but never edit it
+    case "profile": // the profile record carries the email address and role, so it stays with the member and the owner
       if (action === "read") return owner || isSelf(r.ownerId);
       if (action === "write") return isSelf(r.ownerId);
       return false;
 
     case "avatar":
       return action === "read"; // every signed-in member sees everyone's avatar
-
-    case "photo":
-      if (action === "read") return owner || isSelf(r.ownerId);
-      if (action === "write") return isSelf(r.ownerId);
-      return false;
 
     case "invite": // create, revoke, list: owner only
       return owner && (action === "invite" || action === "read" || action === "admin");

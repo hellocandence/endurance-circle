@@ -20,7 +20,7 @@ test("a member reads their own journey, including private notes", async ({ page 
   expect(body.programme.dayNumber).toBe(23);
 });
 
-test("AT-02: a member cannot read another member's private journey", async ({ browser }) => {
+test("AT-02: a member can read another member's journey (open circle, T104) but ids are validated", async ({ browser }) => {
   const aliceCtx = await browser.newContext({ baseURL: test.info().project.use.baseURL });
   const alice = await aliceCtx.newPage();
   await loginAs(alice, "alice@e2e.test", MONDAY);
@@ -31,11 +31,10 @@ test("AT-02: a member cannot read another member's private journey", async ({ br
   const bob = await bobCtx.newPage();
   await loginAs(bob, "bob@e2e.test", MONDAY);
   const res = await bob.request.get(`/api/members/${aliceId}/journey`);
-  expect(res.status()).toBe(403);
-  expect(await res.text()).not.toContain("ALICE-SECRET-FOR-AT02");
-  // an id that does not exist is also 403 for members (no way to probe which ids exist)
-  expect((await bob.request.get("/api/members/00000000-0000-4000-8000-000000000000/journey")).status()).toBe(403);
-  expect((await bob.request.get("/api/members/not-a-uuid/journey")).status()).toBe(403);
+  expect(res.status()).toBe(200);
+  expect(await res.text()).toContain("ALICE-SECRET-FOR-AT02");
+  expect((await bob.request.get("/api/members/00000000-0000-4000-8000-000000000000/journey")).status()).toBe(404);
+  expect((await bob.request.get("/api/members/not-a-uuid/journey")).status()).toBe(404);
 
   // Bob's own journey never contains Alice's data
   const mine = await bob.request.get("/api/journey/me");

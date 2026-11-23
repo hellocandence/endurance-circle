@@ -78,11 +78,12 @@ describe("public column allowlists", () => {
   });
 });
 
-describe("bodyMetrics projection enforces BR3 itself", () => {
-  it("the member and the owner can read; another member gets ForbiddenError (AT-01)", () => {
+describe("bodyMetrics projection (open to the whole circle since T104)", () => {
+  it("the member, the owner and any other member can read (AT-01); a guest cannot", () => {
     expect(bodyMetrics(alice, "alice", body).weightKg).toBe(71.5);
     expect(bodyMetrics(owner, "alice", body).weightKg).toBe(71.5);
-    expect(() => bodyMetrics(bob, "alice", body)).toThrow(ForbiddenError);
+    expect(bodyMetrics(bob, "alice", body).weightKg).toBe(71.5);
+    expect(() => bodyMetrics(null as never, "alice", body)).toThrow(ForbiddenError);
   });
 
   it("converts numerics and derives the protein target (1.2 × 71.5 → 86)", () => {
@@ -93,14 +94,13 @@ describe("bodyMetrics projection enforces BR3 itself", () => {
   });
 });
 
-describe("privateJourney projection enforces ownership itself", () => {
-  it("returns the full log (with private notes) to the member and the owner (AT-04 style)", () => {
-    expect(privateJourney(alice, "alice", [log]).logs[0].privateNotes).toBe("SECRET-NOTE-123");
-    expect(privateJourney(owner, "alice", [log]).logs[0].privateNotes).toBe("SECRET-NOTE-123");
+describe("privateJourney projection (open to the whole circle since T104)", () => {
+  it("returns the full log (with notes) to the member, the owner and other members (AT-02)", () => {
+    for (const who of [alice, owner, bob]) expect(privateJourney(who, "alice", [log]).logs[0].privateNotes).toBe("SECRET-NOTE-123");
   });
 
-  it("refuses another member (AT-02)", () => {
-    expect(() => privateJourney(bob, "alice", [log])).toThrow(ForbiddenError);
+  it("refuses a guest", () => {
+    expect(() => privateJourney(null as never, "alice", [log])).toThrow(ForbiddenError);
   });
 
   it("converts numerics and copies arrays", () => {

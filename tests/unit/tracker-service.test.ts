@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as t from "@/server/db/schema";
 import { dayPatchSchema } from "@/server/tracker/schema";
+import { getJourneyRows } from "@/server/tracker/journey";
 import { getToday, saveDay } from "@/server/tracker/service";
 import { makeTestDb } from "./helpers/db";
 
@@ -90,16 +91,21 @@ describe("saveDay", () => {
   });
 
   it("AT-10: a missed task is logged once the day is over, and the day count continues", async () => {
-    // Saturday 2026-11-21 was left incomplete. On Sunday morning the member edits it (yesterday is still editable).
-    const r = await saveDay(db(), aliceId, "2026-11-21", { githubContribution: false }, SUN_NOW);
-    if (!r.ok) throw new Error("expected ok");
-    const [sat] = (await rows(aliceId)).filter((x) => x.logDate === "2026-11-21");
-    expect(sat.completed).toBe(false);
-    expect(sat.missedTasks).toEqual(expect.arrayContaining(["ELECTRO", "PROTEIN", "STUDY", "TECH", "GITHUB", "SATSANG"]));
-    expect(r.data.evaluation.missed.length).toBeGreaterThan(0);
+    // Saturday 2026-11-21 was left incomplete. It is locked on Sunday (T105), but its misses are still reported.
+    const journey = await getJourneyRows(db(), aliceId, SUN_NOW);
+    const sat = journey?.rows.find((x) => x.logDate === "2026-11-21");
+    expect(sat?.completed).toBe(false);
+    expect(sat?.missedTasks).toEqual(expect.arrayContaining(["ELECTRO", "PROTEIN", "STUDY", "TECH", "GITHUB", "SATSANG"]));
+    const view = await getToday(db(), aliceId, SUN_NOW);
+    expect(view.ok && view.data.dayNumber).toBe(3);
 
-    const today = await getToday(db(), aliceId, SUN_NOW);
-    expect(today.ok && today.data.dayNumber).toBe(3); // day count did not reset
+    // today's own log is still open: it has no misses until the day ends
+    expect(journey?.rows.find((x) => x.logDate === "2026-11-22")?.missedTasks ?? []).toEqual([]);
+  });
+
+  it("T105: a finished day is locked, only today can be edited", async () => {
+    expect(await saveDay(db(), aliceId, "2026-11-21", { githubContribution: true }, SUN_NOW)).toEqual({ ok: false, error: "locked" }); // yesterday
+    expect(await saveDay(db(), aliceId, "2026-11-22", { updateText: "still open" }, SUN_NOW)).toMatchObject({ ok: true }); // today
   });
 
   it("AT-09: Sunday needs stretching, not a run", async () => {
@@ -115,7 +121,8 @@ describe("saveDay", () => {
     expect(await saveDay(db(), aliceId, "2026-11-21", {}, FRI_NOW)).toEqual({ ok: false, error: "in_future" });
     expect(await saveDay(db(), aliceId, "2026-11-19", {}, FRI_NOW)).toEqual({ ok: false, error: "before_start" });
     expect(await saveDay(db(), aliceId, "2026-11-20", {}, MON_NOW)).toEqual({ ok: false, error: "locked" }); // 3 days ago
-    expect(await saveDay(db(), aliceId, "2026-11-22", {}, MON_NOW)).toMatchObject({ ok: true }); // yesterday
+    expect(await saveDay(db(), aliceId, "2026-11-22", {}, MON_NOW)).toEqual({ ok: false, error: "locked" }); // yesterday (T105)
+    expect(await saveDay(db(), aliceId, "2026-11-23", {}, MON_NOW)).toMatchObject({ ok: true }); // today
     for (const bad of ["tomorrow", "2026-02-30", "2026-11-20T10:00", "../etc"]) {
       expect(await saveDay(db(), aliceId, bad, {}, FRI_NOW)).toEqual({ ok: false, error: "invalid_date" });
     }

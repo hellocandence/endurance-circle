@@ -69,7 +69,7 @@ export function BodyLimitsForm({ body }: { body: Body }) {
   }
 
   return (
-    <Section title="Body limits" description="Private: only you and the circle owner can see these. They set your daily targets.">
+    <Section title="Body limits" description="Everyone in the circle can see these on your Progress page. They set your daily targets.">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Num label="Weight" value={f.weightKg} onChange={set("weightKg")} min={20} max={400} step={0.1} unit="kg" />
         <Num label="Height" value={f.heightCm} onChange={set("heightCm")} min={80} max={260} step={0.1} unit="cm" />

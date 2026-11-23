@@ -92,7 +92,7 @@ export function PhotoUploader({ userId, avatarPhotoId, name }: { userId: string;
   const shown = rect && img ? { w: (img.naturalWidth / rect.side) * VIEW, h: (img.naturalHeight / rect.side) * VIEW, l: -(rect.x / rect.side) * VIEW, t: -(rect.y / rect.side) * VIEW } : null;
 
   return (
-    <Section title="Photo" description="Shown on your card. Everyone in the circle sees a small version; only you and the owner can open the full size.">
+    <Section title="Photo" description="Shown on your card. Everyone in the circle can see it, including the full size on your Progress page.">
       <div className="flex items-center gap-4">
         {avatarPhotoId ? (
           // eslint-disable-next-line @next/next/no-img-element -- our own 128 px avatar endpoint

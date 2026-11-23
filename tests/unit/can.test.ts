@@ -9,16 +9,16 @@ type Row = { name: string; action: Action; resource: (subjectId: string) => Reso
 // For rows about someone's data: `self` = a member acting on their own data, `other` = a member acting on a different member's.
 const rows: Row[] = [
   { name: "read public circle feed", action: "read", resource: () => ({ kind: "circle.public" }), owner: true, self: true, other: true },
-  { name: "read private journey", action: "read", resource: (id) => ({ kind: "journey", ownerId: id }), owner: true, self: true, other: false },
-  { name: "read body metrics", action: "read", resource: (id) => ({ kind: "body", ownerId: id }), owner: true, self: true, other: false },
+  { name: "read journey (public to the circle, T104)", action: "read", resource: (id) => ({ kind: "journey", ownerId: id }), owner: true, self: true, other: true },
+  { name: "read body metrics", action: "read", resource: (id) => ({ kind: "body", ownerId: id }), owner: true, self: true, other: true },
   { name: "edit body limits", action: "write", resource: (id) => ({ kind: "body", ownerId: id }), owner: false, self: true, other: false },
   { name: "edit profile", action: "write", resource: (id) => ({ kind: "profile", ownerId: id }), owner: false, self: true, other: false },
   { name: "read profile", action: "read", resource: (id) => ({ kind: "profile", ownerId: id }), owner: true, self: true, other: false },
-  { name: "read tracker", action: "read", resource: (id) => ({ kind: "tracker", ownerId: id }), owner: true, self: true, other: false },
+  { name: "read tracker", action: "read", resource: (id) => ({ kind: "tracker", ownerId: id }), owner: true, self: true, other: true },
   { name: "edit tracker", action: "write", resource: (id) => ({ kind: "tracker", ownerId: id }), owner: false, self: true, other: false },
   { name: "write private journey", action: "write", resource: (id) => ({ kind: "journey", ownerId: id }), owner: false, self: true, other: false },
   { name: "upload photo", action: "write", resource: (id) => ({ kind: "photo", ownerId: id }), owner: false, self: true, other: false },
-  { name: "view full photo", action: "read", resource: (id) => ({ kind: "photo", ownerId: id }), owner: true, self: true, other: false },
+  { name: "view full photo", action: "read", resource: (id) => ({ kind: "photo", ownerId: id }), owner: true, self: true, other: true },
   { name: "view avatar", action: "read", resource: (id) => ({ kind: "avatar", ownerId: id }), owner: true, self: true, other: true },
 ];
 
@@ -110,15 +110,15 @@ describe("default deny", () => {
 
   it("never treats a missing ownerId as a match for a missing user id", () => {
     const noOwner = { kind: "body" } as unknown as Resource;
-    expect(can(alice, "read", noOwner)).toBe(false);
     expect(can(alice, "write", noOwner)).toBe(false);
-    expect(can({ id: "", role: "MEMBER" }, "read", { kind: "body", ownerId: "" })).toBe(false);
+    expect(can({ id: "", role: "MEMBER" }, "write", { kind: "body", ownerId: "" })).toBe(false);
+    expect(can({ id: "", role: "MEMBER" }, "read", { kind: "body", ownerId: "" })).toBe(false); // no valid session, no read
   });
 
   it("id comparison is exact (no case folding, no coercion)", () => {
-    expect(can(alice, "read", { kind: "body", ownerId: "Alice" })).toBe(false);
-    expect(can(alice, "read", { kind: "body", ownerId: "alice " })).toBe(false);
-    expect(can(alice, "read", { kind: "body", ownerId: 7 as unknown as string })).toBe(false);
+    expect(can(alice, "write", { kind: "body", ownerId: "Alice" })).toBe(false);
+    expect(can(alice, "write", { kind: "body", ownerId: "alice " })).toBe(false);
+    expect(can(alice, "write", { kind: "body", ownerId: 7 as unknown as string })).toBe(false);
   });
 });
 

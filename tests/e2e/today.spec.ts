@@ -102,28 +102,28 @@ test.describe("normal day (Monday, day 23)", () => {
     await expect(page.getByRole("spinbutton", { name: "Protein", exact: true })).toHaveValue("84");
   });
 
-  test("public and private notes are labelled honestly and persist", async ({ page }) => {
+  test("the update line and the daily note are both labelled as visible to the circle and persist", async ({ page }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
     await hydrated(page);
     await expect(page.getByText("Public: everyone in the circle sees this line.")).toBeVisible();
-    await expect(page.getByText("Visible to you and the circle owner only.")).toBeVisible();
+    await expect(page.getByText("Everyone in the circle can read this on your daily logs.")).toBeVisible();
     await page.getByLabel("Update for the circle").fill("Day 23 done");
-    await page.getByLabel("Private note").fill("knee felt tight");
+    await page.getByLabel("Daily note").fill("knee felt tight");
     await waitSaved(page);
     await page.reload();
     await hydrated(page);
-    await expect(page.getByLabel("Private note")).toHaveValue("knee felt tight");
+    await expect(page.getByLabel("Daily note")).toHaveValue("knee felt tight");
   });
 
   test("edits made offline are kept, shown with a banner, and sent when the connection returns", async ({ page, context }) => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
     await hydrated(page);
-    await expect(page.getByLabel("Private note")).toBeVisible();
+    await expect(page.getByLabel("Daily note")).toBeVisible();
     await context.setOffline(true);
     await expect(page.getByRole("status").filter({ hasText: "You're offline" })).toBeVisible();
-    await page.getByLabel("Private note").fill("typed on the train");
+    await page.getByLabel("Daily note").fill("typed on the train");
     await expect(page.getByText(/You're offline\. Changes will save/)).toBeVisible();
     expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("endurance-circle:pending:")))).toBe(false); // private notes never reach storage
     await page.getByLabel("Update for the circle").fill("offline line");
@@ -135,7 +135,7 @@ test.describe("normal day (Monday, day 23)", () => {
     expect(await page.evaluate(() => Object.keys(localStorage).some((k) => k.startsWith("endurance-circle:pending:")))).toBe(false);
     await page.reload();
     await hydrated(page);
-    await expect(page.getByLabel("Private note")).toHaveValue("typed on the train");
+    await expect(page.getByLabel("Daily note")).toHaveValue("typed on the train");
     await expect(page.getByLabel("Update for the circle")).toHaveValue("offline line");
   });
 
@@ -143,11 +143,11 @@ test.describe("normal day (Monday, day 23)", () => {
     await loginAs(page, "todd@e2e.test", MONDAY);
     await page.goto("/today");
     await hydrated(page);
-    await expect(page.getByLabel("Private note")).toBeVisible();
+    await expect(page.getByLabel("Daily note")).toBeVisible();
     await page.evaluate(() => localStorage.setItem("endurance-circle:pending:00000000-0000-4000-8000-000000000000:2099-01-01", JSON.stringify({ updateText: "from someone else" })));
     await page.reload();
     await hydrated(page);
-    await expect(page.getByLabel("Private note")).toBeVisible();
+    await expect(page.getByLabel("Daily note")).toBeVisible();
     expect(await page.evaluate(() => Object.keys(localStorage).filter((k) => k.includes("00000000-0000-4000")))).toEqual([]);
     await page.evaluate(() => localStorage.setItem("endurance-circle:pending:x:y", "{}"));
     await page.context().clearCookies();

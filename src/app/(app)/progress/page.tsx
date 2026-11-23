@@ -25,6 +25,7 @@ export default async function ProgressPage() {
         </div>
         <Link href="/progress/share" className="glass-focus hover-lift shrink-0 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-white shadow-glass-press hover:bg-accent-strong">Share story</Link>
       </header>
+      <Link href={`/progress/${actor.id}/logs`} className="glass-focus hover-lift w-fit rounded-full bg-white/70 px-4 py-2 text-sm font-semibold text-accent-strong shadow-glass-press hover:bg-white/90">My daily logs</Link>
       {hasTrend && (
         <GlassCard className="flex flex-col gap-2 p-4">
           <h2 className="font-semibold">Circle, last 14 days</h2>

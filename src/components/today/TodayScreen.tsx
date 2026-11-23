@@ -144,7 +144,7 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
       <GlassCard className="flex flex-col gap-3 p-4">
         <h2 className="text-base font-semibold">Notes</h2>
         <TextField label="Update for the circle" value={values.updateText} onChange={(s) => set("updateText", s)} max={280} hint="Public: everyone in the circle sees this line." />
-        <TextField label="Private note" value={values.privateNotes} onChange={(s) => set("privateNotes", s)} max={2000} multiline hint="Visible to you and the circle owner only." />
+        <TextField label="Daily note" value={values.privateNotes} onChange={(s) => set("privateNotes", s)} max={2000} multiline hint="Everyone in the circle can read this on your daily logs." />
       </GlassCard>
 
       <GlassButton onClick={() => void retry()} disabled={status === "saving"} className="w-full">{status === "saving" ? "Saving…" : "Save"}</GlassButton>
