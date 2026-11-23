@@ -63,3 +63,10 @@ docs/
 
 # Playwright MCP scratch (screenshots, downloads)
 .playwright-mcp/
+
+# database dumps and backups never go in git
+*.dump
+*.bak
+*.backup
+/backups/
+*-backups/
