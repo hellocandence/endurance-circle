@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AppTabBar } from "@/components/AppTabBar";
+import { ToastProvider } from "@/components/ui";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { getSession } from "@/server/auth/session-user";
 
@@ -8,10 +9,10 @@ import { getSession } from "@/server/auth/session-user";
 export default async function AppLayout({ children }: { children: ReactNode }) {
   if (!(await getSession())) redirect("/login");
   return (
-    <>
+    <ToastProvider>
       <main className="mx-auto w-full max-w-2xl px-4 pb-32 pt-6 md:pb-10 md:pl-32">{children}</main>
       <OfflineBanner />
       <AppTabBar />
-    </>
+    </ToastProvider>
   );
 }

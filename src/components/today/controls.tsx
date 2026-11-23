@@ -59,7 +59,7 @@ export function TextField({ label, value, onChange, max, multiline = false, hint
 }
 
 /** A big, thumb-friendly switch for yes/no tasks. */
-export function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (b: boolean) => void }) {
+export function Toggle({ label, checked, onChange, onText = "Done", offText = "Tap to mark" }: { label: string; checked: boolean; onChange: (b: boolean) => void; onText?: string; offText?: string }) {
   return (
     <button
       type="button"
@@ -69,7 +69,7 @@ export function Toggle({ label, checked, onChange }: { label: string; checked: b
       className={`glass-focus hover-lift flex min-h-12 w-full items-center justify-between rounded-2xl px-4 text-base font-medium transition-colors duration-200 ${checked ? "bg-emerald-700 text-white" : "glass text-ink"}`}
     >
       <span>{label}</span>
-      <span aria-hidden="true">{checked ? "Done" : "Tap to mark"}</span>
+      <span aria-hidden="true">{checked ? onText : offText}</span>
     </button>
   );
 }

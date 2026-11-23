@@ -4,16 +4,17 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Field, FormMessage } from "@/components/auth/fields";
 import { Chip, Toggle } from "@/components/today/controls";
-import { GlassButton } from "@/components/ui";
+import { GlassButton, useToast } from "@/components/ui";
 import { postJson, sendJson } from "@/lib/api";
 import { EARLIEST, LATEST, MAX_TIMES, normalizeTimes, timesEvery } from "@/lib/ec-times";
 import type { MySettings } from "@/server/ec/service";
 import { Section, type Status } from "@/components/settings/Section";
 
-const select = "glass glass-focus min-h-12 w-full rounded-2xl px-4 text-base text-ink";
+const select = "glass glass-focus min-h-12 w-full min-w-0 rounded-2xl px-3 text-base text-ink";
 
 export function EcReminders({ mine, timeZone }: { mine: MySettings; timeZone: string }) {
   const router = useRouter();
+  const toast = useToast();
   const [number, setNumber] = useState(mine.whatsappNumber ?? "");
   const [enabled, setEnabled] = useState(mine.enabled);
   const [times, setTimes] = useState<string[]>(mine.times);
@@ -34,18 +35,29 @@ export function EcReminders({ mine, timeZone }: { mine: MySettings; timeZone: st
     const res = await sendJson<{ issues?: { message: string }[]; enabled?: boolean }>("PUT", "/api/ec/me", { whatsappNumber: number, enabled, times });
     if (res.ok) {
       setEnabled(res.data.enabled ?? false);
-      setStatus({ kind: "ok", text: enabled && !res.data.enabled ? "Saved, but reminders stay off until you add a number and at least one time." : "Saved." });
+      const text = enabled && !res.data.enabled ? "Saved, but reminders stay off until you add a number and at least one time." : "Saved.";
+      setStatus({ kind: "ok", text });
+      toast(text.startsWith("Saved,") ? "Saved. Add a number and a time to switch reminders on." : "Reminders saved", text.startsWith("Saved,") ? "info" : "success");
       router.refresh();
-    } else setStatus({ kind: "error", text: res.status === 400 ? (res.data.issues?.[0]?.message ?? "Please check your details.") : "Couldn't save. Please try again." });
+    } else {
+      const text = res.status === 400 ? (res.data.issues?.[0]?.message ?? "Please check your details.") : "Couldn't save. Please try again.";
+      setStatus({ kind: "error", text });
+      toast(text, "error");
+    }
   }
 
   async function sendTest() {
     setStatus({ kind: "saving" });
     const res = await postJson<{ error?: string }>("/api/ec/test", {});
-    if (res.ok) setStatus({ kind: "ok", text: "Test sent. Check the WhatsApp group: it should tag you." });
-    else if (res.data.error === "no_number") setStatus({ kind: "error", text: "Save your WhatsApp number first." });
-    else if (res.status === 429) setStatus({ kind: "error", text: "That's enough tests for now. Try again in a few minutes." });
-    else setStatus({ kind: "error", text: "The bot couldn't send it. Try again in a minute." });
+    const text = res.ok
+      ? "Test sent. Check the WhatsApp group: it should tag you."
+      : res.data.error === "no_number"
+        ? "Save your WhatsApp number first."
+        : res.status === 429
+          ? "That's enough tests for now. Try again in a few minutes."
+          : "The bot couldn't send it. Try again in a minute.";
+    setStatus(res.ok ? { kind: "ok", text } : { kind: "error", text });
+    toast(res.ok ? "Test message sent" : text, res.ok ? "success" : "error");
   }
 
   return (
@@ -53,22 +65,22 @@ export function EcReminders({ mine, timeZone }: { mine: MySettings; timeZone: st
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
         <Field label="Your WhatsApp number" type="tel" inputMode="tel" value={number} onChange={(e) => setNumber(e.target.value)} maxLength={24} placeholder="919876543210" hint="With country code. Needed so the bot can tag you. Only you and the owner can see it." autoComplete="tel" />
 
-        <fieldset className="flex flex-col gap-3">
-          <legend className="text-sm font-medium">Quick setup: repeat every</legend>
-          <div className="grid grid-cols-3 gap-2">
-            <label className="flex flex-col gap-1 text-sm">Every
-              <select className={select} value={hours} onChange={(e) => setHours(e.target.value)}>
-                {["1", "2", "3", "4", "6"].map((h) => <option key={h} value={h}>{h} hour{h === "1" ? "" : "s"}</option>)}
-              </select>
-            </label>
-            <label className="flex flex-col gap-1 text-sm">From
+        <fieldset className="flex flex-col gap-3 rounded-2xl bg-white/40 p-3">
+          <legend className="px-1 text-sm font-medium">Quick setup</legend>
+          <label className="flex flex-col gap-1 text-sm">Repeat every
+            <select className={select} value={hours} onChange={(e) => setHours(e.target.value)}>
+              {["1", "2", "3", "4", "6"].map((h) => <option key={h} value={h}>{h} hour{h === "1" ? "" : "s"}</option>)}
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-3">
+            <label className="flex min-w-0 flex-col gap-1 text-sm">From
               <input type="time" className={select} value={from} min={EARLIEST} max={LATEST} onChange={(e) => setFrom(e.target.value)} />
             </label>
-            <label className="flex flex-col gap-1 text-sm">Until
+            <label className="flex min-w-0 flex-col gap-1 text-sm">Until
               <input type="time" className={select} value={to} min={EARLIEST} max={LATEST} onChange={(e) => setTo(e.target.value)} />
             </label>
           </div>
-          <GlassButton type="button" onClick={() => setTimes(timesEvery(Number(hours), from, to))}>Fill the times</GlassButton>
+          <GlassButton type="button" onClick={() => setTimes(timesEvery(Number(hours), from, to))} className="w-full">Fill the times</GlassButton>
         </fieldset>
 
         <div className="flex flex-col gap-2">
@@ -80,13 +92,16 @@ export function EcReminders({ mine, timeZone }: { mine: MySettings; timeZone: st
               ))}
             </ul>
           )}
-          <div className="flex items-end gap-2">
-            <div className="flex-1"><Field label="Add a time" type="time" value={extra} min={EARLIEST} max={LATEST} onChange={(e) => setExtra(e.target.value)} /></div>
-            <GlassButton type="button" onClick={addTime} disabled={!extra || times.length >= MAX_TIMES} className="min-h-12">Add</GlassButton>
+          <div className="flex flex-col gap-2 rounded-2xl bg-white/40 p-3">
+            <label htmlFor="ec-add-time" className="text-sm font-medium">Add a time</label>
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+              <input id="ec-add-time" type="time" className={select} value={extra} min={EARLIEST} max={LATEST} onChange={(e) => setExtra(e.target.value)} />
+              <GlassButton type="button" onClick={addTime} disabled={!extra || times.length >= MAX_TIMES} className="min-h-12 px-6">Add</GlassButton>
+            </div>
           </div>
         </div>
 
-        <Toggle label="Send me reminders" checked={enabled} onChange={setEnabled} />
+        <Toggle label="Send me reminders" checked={enabled} onChange={setEnabled} onText="On" offText="Off" />
         {mine.lastSentAt && <p className="text-sm text-ink-muted">Last reminder sent {new Date(mine.lastSentAt).toLocaleString()}.</p>}
         {status.kind === "ok" && <FormMessage kind="success">{status.text}</FormMessage>}
         {status.kind === "error" && <FormMessage kind="error">{status.text}</FormMessage>}

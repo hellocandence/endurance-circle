@@ -28,7 +28,7 @@ test.describe("circle tab", () => {
     await page.goto("/dashboard");
     expect(page.viewportSize()!.width).toBe(375);
 
-    await expect(page.getByRole("heading", { name: "Circle", exact: true, level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Endurance Circle", exact: true, level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Circle pulse" })).toBeVisible();
     const members = page.getByRole("list", { name: "Members" }).locator(":scope > li"); // (each card also holds a list of task chips)
     await expect(members).toHaveCount(MEMBER_COUNT);

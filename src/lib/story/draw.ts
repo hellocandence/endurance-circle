@@ -134,6 +134,31 @@ function gradientFill(ctx: Ctx, p: Palette, x0: number, y0: number, x1: number, 
   return g;
 }
 
+/** Wrap text to the width, at most `maxLines` lines (the last one ends with an ellipsis when it was cut). */
+function wrap(ctx: Ctx, s: string, maxWidth: number, maxLines: number, font: string, size: number, weight: number): string[] {
+  ctx.font = `${weight} ${size}px ${font}`;
+  const words = s.trim().split(/\s+/);
+  const lines: string[] = [];
+  let line = "";
+  for (let i = 0; i < words.length; i++) {
+    const test = line ? `${line} ${words[i]}` : words[i];
+    if (ctx.measureText(test).width <= maxWidth || !line) {
+      line = test;
+      continue;
+    }
+    lines.push(line);
+    line = words[i];
+    if (lines.length === maxLines - 1) {
+      line = words.slice(i).join(" ");
+      break;
+    }
+  }
+  lines.push(line);
+  const last = lines.length - 1;
+  while (ctx.measureText(lines[last]).width > maxWidth && lines[last].length > 1) lines[last] = `${lines[last].slice(0, -2)}…`;
+  return lines.slice(0, maxLines);
+}
+
 /** A rounded progress track with a gradient fill (0 to 1). */
 function bar(ctx: Ctx, p: Palette, x: number, y: number, w: number, h: number, ratio: number) {
   rr(ctx, x, y, w, h, h / 2);
@@ -158,6 +183,8 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
   const X = 72;
   const CW = W - X * 2;
   const GAP = 28;
+  // With a note on the story the blocks are a little tighter so the note gets its own card and nothing overlaps.
+  const compact = Boolean(d.update);
 
   // --- background: soft gradient with colour glows (the app's glass look)
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -191,18 +218,18 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
   // --- hero: whose day, which day, how far through
   label(ctx, p, font, d.name, X + 2, 352);
   const num = String(d.dayNumber);
-  text(ctx, "Day", X, 506, { size: 56, weight: 600, color: p.muted, font });
+  text(ctx, "Day", X, compact ? 482 : 506, { size: 56, weight: 600, color: p.muted, font });
   ctx.font = `600 56px ${font}`;
   const dayW = ctx.measureText("Day").width;
-  text(ctx, num, X + dayW + 24, 510, { size: 176, weight: 800, color: p.ink, font, spacing: -6 });
-  ctx.font = `800 176px ${font}`;
+  text(ctx, num, X + dayW + 24, compact ? 486 : 510, { size: compact ? 150 : 176, weight: 800, color: p.ink, font, spacing: -6 });
+  ctx.font = `800 ${compact ? 150 : 176}px ${font}`;
   const numW = ctx.measureText(num).width;
-  text(ctx, `of ${d.totalDays}`, X + dayW + 24 + numW + 20, 510, { size: 56, weight: 600, color: p.muted, font });
-  bar(ctx, p, X, 540, CW, 16, Math.max(0.02, d.dayNumber / d.totalDays));
+  text(ctx, `of ${d.totalDays}`, X + dayW + 24 + numW + 20, compact ? 486 : 510, { size: 56, weight: 600, color: p.muted, font });
+  bar(ctx, p, X, compact ? 514 : 540, CW, 16, Math.max(0.02, d.dayNumber / d.totalDays));
 
   // --- three equal metric tiles
-  const tileY = 590;
-  const tileH = 144;
+  const tileY = compact ? 562 : 590;
+  const tileH = compact ? 132 : 144;
   const tileW = (CW - GAP * 2) / 3;
   const tiles: { label: string; value: string; sub: string }[] = [
     { label: "Last 7 days", value: `${d.last7Pct}%`, sub: "of tasks done" },
@@ -212,18 +239,19 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
   tiles.forEach((t, i) => {
     const tx = X + i * (tileW + GAP);
     glassCard(ctx, p, tx, tileY, tileW, tileH, 44);
-    label(ctx, p, font, t.label, tx + 30, tileY + 44);
-    text(ctx, t.value, tx + 30, tileY + 104, { size: 60, weight: 800, color: p.ink, font, spacing: -2, maxWidth: tileW - 60 });
-    text(ctx, t.sub, tx + 30, tileY + 132, { size: 22, weight: 500, color: p.muted, font, maxWidth: tileW - 60 });
+    label(ctx, p, font, t.label, tx + 30, tileY + 42);
+    text(ctx, t.value, tx + 30, tileY + tileH - (compact ? 38 : 40), { size: compact ? 54 : 60, weight: 800, color: p.ink, font, spacing: -2, maxWidth: tileW - 60 });
+    text(ctx, t.sub, tx + 30, tileY + tileH - 12, { size: 22, weight: 500, color: p.muted, font, maxWidth: tileW - 60 });
   });
 
   // --- today card: progress + two-column task list (+ own numbers)
   const showDetails = opts.details && d.details;
   const todayY = tileY + tileH + GAP;
   const rows = Math.ceil(d.tasks.length / 2);
-  const rowH = 58;
-  const detailsH = showDetails ? 104 : 0;
-  const todayH = 150 + rows * rowH + 18 + detailsH;
+  const rowH = compact ? 50 : 58;
+  const gridTop = compact ? 136 : 150;
+  const detailsH = showDetails ? (compact ? 92 : 104) : 0;
+  const todayH = gridTop + rows * rowH + 18 + detailsH;
   glassCard(ctx, p, X, todayY, CW, todayH, 52);
   label(ctx, p, font, "Today", X + 40, todayY + 58);
   text(ctx, `${d.done} of ${d.required} tasks`, X + CW - 40, todayY + 60, { size: 30, weight: 700, color: p.ink, font, align: "right" });
@@ -234,7 +262,7 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
     const col = i % 2;
     const row = Math.floor(i / 2);
     const tx = X + 40 + col * colW;
-    const ty = todayY + 150 + row * rowH;
+    const ty = todayY + gridTop + row * rowH;
     const cx = tx + 18;
     const cy = ty + 18;
     if (t.done) {
@@ -276,21 +304,23 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
     const iw = (CW - 80) / items.length;
     items.forEach((it, i) => {
       const ix = X + 40 + i * iw;
-      label(ctx, p, font, it.l, ix, dy + 40);
-      text(ctx, it.v, ix, dy + 82, { size: 34, weight: 800, color: p.ink, font, spacing: -0.5, maxWidth: iw - 12 });
+      label(ctx, p, font, it.l, ix, dy + (compact ? 36 : 40));
+      text(ctx, it.v, ix, dy + (compact ? 76 : 82), { size: compact ? 32 : 34, weight: 800, color: p.ink, font, spacing: -0.5, maxWidth: iw - 12 });
     });
   }
 
   // --- journey card: every day of the programme
   const hmY = todayY + todayH + GAP;
-  const hmH = 296;
+  // Compact: 25 squares per row (three rows for 75 days) instead of 15 (five rows), which frees room for the note.
+  const cols = compact ? 25 : 15;
+  const cell = compact ? 28 : 34;
+  const gap = compact ? 6 : 8;
+  const gridH = Math.ceil(d.cells.length / cols) * cell + (Math.ceil(d.cells.length / cols) - 1) * gap;
+  const hmH = 86 + gridH + 28;
   glassCard(ctx, p, X, hmY, CW, hmH, 52);
   label(ctx, p, font, "Every day so far", X + 40, hmY + 58);
   const doneDays = d.cells.filter((c) => c === "done").length;
   text(ctx, `${doneDays} perfect`, X + CW - 40, hmY + 60, { size: 30, weight: 700, color: p.ink, font, align: "right" });
-  const cols = 15;
-  const cell = 34;
-  const gap = 8;
   const gw = cols * cell + (cols - 1) * gap;
   const gx = X + (CW - gw) / 2;
   const gy = hmY + 86;
@@ -316,6 +346,12 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
     }
   });
 
-  // --- the member's own line (kept inside the bottom safe area)
-  if (d.update) text(ctx, `“${d.update}”`, W / 2, Math.min(hmY + hmH + 62, H - 250), { size: 30, weight: 500, color: p.muted, font, align: "center", maxWidth: CW - 40 });
+  // --- the member's own note: its own card below the graph, wrapped (up to 3 lines), never drawn over anything
+  if (d.update) {
+    const noteY = hmY + hmH + GAP;
+    const lines = wrap(ctx, `“${d.update}”`, CW - 80, 3, font, 30, 500);
+    const noteH = 56 + lines.length * 42;
+    glassCard(ctx, p, X, noteY, CW, noteH, 48);
+    lines.forEach((l, i) => text(ctx, l, X + 40, noteY + 28 + 30 + i * 42, { size: 30, weight: 500, color: p.ink, font }));
+  }
 }

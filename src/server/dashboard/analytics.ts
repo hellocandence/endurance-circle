@@ -151,6 +151,8 @@ export type OverviewRow = ProgressRow & {
   streak: number;
   avgTaskPct: number;
   recent: DayState[]; // the last 14 programme days up to today, oldest first
+  recentCells: DayCell[]; // the same days with their date and task counts (public counts only)
+  tasksPct: number; // share of required tasks ticked over the days so far
 };
 
 export type TrendPoint = { date: string; pct: number | null; completed: number; enrolled: number };
@@ -164,7 +166,7 @@ export async function getProgressOverview(db: Db, now = new Date(), trendDays = 
   for (const { person, programme, logs, days, today } of circle) {
     const none = { completed: 0, elapsed: 0, pct: 0 };
     if (!programme) {
-      rows.push({ id: person.id, displayName: person.name, dayNumber: null, window: none, last7: none, streak: 0, avgTaskPct: 0, recent: [] });
+      rows.push({ id: person.id, displayName: person.name, dayNumber: null, window: none, last7: none, streak: 0, avgTaskPct: 0, recent: [], recentCells: [], tasksPct: 0 });
       continue;
     }
     const prog = { startDate: programme.startDate, totalDays: programme.totalDays };
@@ -180,6 +182,8 @@ export async function getProgressOverview(db: Db, now = new Date(), trendDays = 
       streak: stats.streak,
       avgTaskPct: stats.avgTaskPct,
       recent: started.slice(-14).map((c) => c.state),
+      recentCells: started.slice(-14),
+      tasksPct: stats.avgTaskPct,
     });
     perMember.push({ start: programme.startDate, total: programme.totalDays, done: new Set(days.filter((d) => d.completed).map((d) => d.date)) });
   }

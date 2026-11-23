@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { Field, FormMessage } from "@/components/auth/fields";
 import { Toggle } from "@/components/today/controls";
-import { GlassButton } from "@/components/ui";
+import { GlassButton, useToast } from "@/components/ui";
 import { sendJson } from "@/lib/api";
 import { EARLIEST, LATEST } from "@/lib/ec-times";
 import type { GroupSettings } from "@/server/ec/service";
@@ -12,6 +12,7 @@ import { Section, type Status } from "@/components/settings/Section";
 
 export function EcGroupCard({ group, isOwner }: { group: GroupSettings; isOwner: boolean }) {
   const router = useRouter();
+  const toast = useToast();
   const [enabled, setEnabled] = useState(group.enabled);
   const [time, setTime] = useState(group.time);
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -30,14 +31,19 @@ export function EcGroupCard({ group, isOwner }: { group: GroupSettings; isOwner:
     const res = await sendJson<{ issues?: { message: string }[] }>("PUT", "/api/ec/group", { enabled, time });
     if (res.ok) {
       setStatus({ kind: "ok", text: "Group reminder saved." });
+      toast("Group reminder saved", "success");
       router.refresh();
-    } else setStatus({ kind: "error", text: res.status === 400 ? (res.data.issues?.[0]?.message ?? "Check the time.") : "Couldn't save. Please try again." });
+    } else {
+      const text = res.status === 400 ? (res.data.issues?.[0]?.message ?? "Check the time.") : "Couldn't save. Please try again.";
+      setStatus({ kind: "error", text });
+      toast(text, "error");
+    }
   }
 
   return (
     <Section title="Group reminder" description="One message a day to the circle's WhatsApp group, asking everyone to update their log. It doesn't tag anyone.">
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <Toggle label="Daily group reminder" checked={enabled} onChange={setEnabled} />
+        <Toggle label="Daily group reminder" checked={enabled} onChange={setEnabled} onText="On" offText="Off" />
         <p className="text-sm text-ink-muted">The app sleeps from 11:59 PM to 6:00 AM, so pick a time between 6:00 AM and 11:59 PM. It can arrive up to 15 minutes late.</p>
         <Field label="Time (your time zone)" type="time" value={time} min={EARLIEST} max={LATEST} onChange={(e) => setTime(e.target.value)} required />
         {group.lastSentAt && <p className="text-sm text-ink-muted">Last sent {new Date(group.lastSentAt).toLocaleString()}.</p>}

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { DashboardScreen } from "@/components/dashboard/DashboardScreen";
 import { requestNow } from "@/server/clock";
+import { getProgressOverview } from "@/server/dashboard/analytics";
 import { getPublicDashboard } from "@/server/dashboard/public";
 import { sessionActor } from "@/server/auth/session-user";
 import { getDb } from "@/server/db";
@@ -16,12 +17,12 @@ export default async function DashboardPage() {
   const now = await requestNow();
   const db = getDb();
 
-  const [{ members, pulse }, mine] = await Promise.all([getPublicDashboard(db, now), getJourneyRows(db, actor.id, now)]);
+  const [{ members, pulse }, mine, overview] = await Promise.all([getPublicDashboard(db, now), getJourneyRows(db, actor.id, now), getProgressOverview(db, now)]);
   const journey = {
     programme: mine?.programme ?? null,
     stats: mine?.stats ?? null,
     logs: privateJourney(actor, actor.id, (mine?.rows ?? []).slice(0, 7)).logs, // own data, through the projection
   };
 
-  return <DashboardScreen members={members.map((m) => ({ ...m, isMe: m.id === actor.id }))} pulse={pulse} journey={journey} />;
+  return <DashboardScreen members={members.map((m) => ({ ...m, isMe: m.id === actor.id }))} pulse={pulse} journey={journey} overview={overview} />;
 }

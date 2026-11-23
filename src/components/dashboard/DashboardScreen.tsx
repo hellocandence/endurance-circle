@@ -3,8 +3,12 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition, type KeyboardEvent } from "react";
-import { GlassButton } from "@/components/ui";
+import { TrendChart } from "@/components/progress/TrendChart";
+import { GlassButton, GlassCard } from "@/components/ui";
+import type { TrendPoint, OverviewRow } from "@/server/dashboard/analytics";
 import type { CirclePulse } from "@/server/dashboard/public";
+import { CircleHeatmap } from "./CircleHeatmap";
+import { Leaderboard } from "./Leaderboard";
 import { MemberCard, type CardMember } from "./MemberCard";
 import { PrivateTab, type MyJourney } from "./PrivateTab";
 import { PulseCard } from "./PulseCard";
@@ -15,7 +19,9 @@ const TABS = [
   { id: "private", label: "You" },
 ] as const;
 
-export function DashboardScreen({ members, pulse, journey }: { members: CardMember[]; pulse: CirclePulse; journey: MyJourney }) {
+export type CircleOverview = { rows: OverviewRow[]; trend: TrendPoint[] };
+
+export function DashboardScreen({ members, pulse, journey, overview }: { members: CardMember[]; pulse: CirclePulse; journey: MyJourney; overview: CircleOverview }) {
   const router = useRouter();
   const reduce = useReducedMotion();
   const [tab, setTab] = useState<(typeof TABS)[number]["id"]>("public");
@@ -43,7 +49,7 @@ export function DashboardScreen({ members, pulse, journey }: { members: CardMemb
       </div>
 
       <header className="flex items-center justify-between gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight">Circle</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">Endurance Circle</h1>
         <GlassButton variant="ghost" onClick={refresh} disabled={refreshing} className="px-4" aria-label="Refresh dashboard">
           {refreshing ? "Refreshing…" : "Refresh"}
         </GlassButton>
@@ -71,6 +77,16 @@ export function DashboardScreen({ members, pulse, journey }: { members: CardMemb
       {tab === "public" ? (
         <div role="tabpanel" id="panel-public" aria-labelledby="tab-public" className="flex flex-col gap-4">
           <PulseCard pulse={pulse} />
+          <Leaderboard rows={overview.rows} meId={members.find((m) => m.isMe)?.id ?? ""} />
+          {overview.trend.some((p) => p.pct !== null) && (
+            <GlassCard className="flex flex-col gap-2 p-4">
+              <h2 className="text-lg font-semibold">Circle, last 14 days</h2>
+              <p className="text-sm text-ink-muted">Share of members who finished each day. Drag across the chart.</p>
+              <TrendChart points={overview.trend} />
+            </GlassCard>
+          )}
+          <CircleHeatmap rows={overview.rows} />
+          <h2 className="mt-2 text-lg font-semibold">Everyone today</h2>
           <ul className="flex flex-col gap-3" aria-label="Members">
             {members.map((m, i) => <MemberCard key={m.id} m={m} index={i} />)}
           </ul>
