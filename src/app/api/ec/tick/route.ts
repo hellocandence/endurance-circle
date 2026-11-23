@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 
 const same = (a: string, b: string) => a.length === b.length && timingSafeEqual(Buffer.from(a), Buffer.from(b));
 
-// Public by design, but only with the shared secret: an external cron pings this every 5 minutes (like the keep-alive ping).
-// It sends whatever reminders are due now. Safe to call as often as you like: a slot is never sent twice.
+// Public by design, but only with the shared secret: an external cron pings this every 15 minutes (06:00-23:45 IST).
+// It sends whatever group reminder is due now. Safe to call as often as you like: a slot is never sent twice.
 export async function POST(req: Request) {
   const secret = process.env.EC_CRON_SECRET;
   const given = req.headers.get("x-cron-secret") ?? "";

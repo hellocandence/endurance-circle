@@ -234,18 +234,18 @@ export const ecReminderSettings = pgTable("ec_reminder_settings", {
     .references(() => users.id, { onDelete: "cascade" }),
   whatsappNumber: text("whatsapp_number"), // digits only, country code first, no "+"
   enabled: boolean("enabled").notNull().default(false),
-  times: text("times").array().notNull().default(sql`'{}'::text[]`), // "HH:MM" in the member's own time zone
+  times: text("times").array().notNull().default(sql`'{}'::text[]`), // unused since T103 (personal schedules were removed); kept so no data is dropped
   lastSentAt: tstz("last_sent_at"),
   ...timestamps(),
 });
 
-// One row (id = 1): the owner's daily reminder to the whole WhatsApp group (nobody is tagged).
+// One row (id = 1): the owner's 1 to 4 daily group reminders. Each one tags the members whose day is not complete.
 export const ecGroupSettings = pgTable(
   "ec_group_settings",
   {
     id: integer("id").primaryKey().default(1),
     enabled: boolean("enabled").notNull().default(false),
-    time: text("time").notNull().default("21:00"), // "HH:MM" in the owner's time zone
+    times: text("times").array().notNull().default(sql`'{21:00}'::text[]`), // 1 to 4 "HH:MM" in the owner's time zone
     lastSentAt: tstz("last_sent_at"),
     ...timestamps(),
   },
@@ -257,7 +257,7 @@ export const ecReminderLog = pgTable(
   "ec_reminder_log",
   {
     id: bigserial("id", { mode: "number" }).primaryKey(),
-    dedupeKey: text("dedupe_key").notNull().unique(), // "group:2026-11-23" or "user:<id>:2026-11-23T09:00"
+    dedupeKey: text("dedupe_key").notNull().unique(), // "group:2026-11-23T21:00" (older rows: "group:2026-11-23", "user:<id>:...")
     kind: text("kind").notNull(), // "group" | "user"
     userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
     status: text("status").notNull().default("sending"), // sending | sent | failed

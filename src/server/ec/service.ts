@@ -1,9 +1,11 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { Db } from "@/server/db/client";
-import { ecGroupSettings, ecReminderLog, ecReminderSettings, users } from "@/server/db/schema";
-import { dueTimes, isValidTime, localParts, normalizeTimes } from "@/lib/ec-times";
-import { groupMessage, personalMessage, testMessage } from "./messages";
+import { commitments, dailyLogs, ecGroupSettings, ecReminderLog, ecReminderSettings, users } from "@/server/db/schema";
+import { dueTimes, isValidTime, localParts, MAX_TIMES, normalizeTimes } from "@/lib/ec-times";
+import { localDate } from "@/server/tracker/dates";
+import { dayNumber } from "@/server/tracker/rules";
+import { reminderMessage, testMessage, type Pending } from "./messages";
 import { sendViaMisa, type MisaMessage } from "./misa";
 import { normalizeNumber } from "./phone";
 
@@ -21,38 +23,45 @@ const number = z
   })
   .nullable();
 
-/** `.strict()` so nothing but these fields can ever be written. */
+/** `.strict()` so nothing but these fields can ever be written. `enabled` means "tag me in the group reminders". */
 export const mySettingsSchema = z
   .object({
     whatsappNumber: number,
     enabled: z.boolean(),
-    times: z.array(z.string()).max(12).transform(normalizeTimes),
   })
   .partial()
   .strict();
 
 export const groupSettingsSchema = z
-  .object({ enabled: z.boolean(), time: z.string().refine(isValidTime, "Pick a time between 06:00 and 23:59") })
+  .object({
+    enabled: z.boolean(),
+    times: z
+      .array(z.string())
+      .min(1, "Pick at least one time")
+      .max(MAX_TIMES, `At most ${MAX_TIMES} reminders a day`)
+      .refine((l) => l.every(isValidTime), "Pick times between 06:00 and 23:45")
+      .transform(normalizeTimes)
+      .refine((l) => l.length > 0, "Pick at least one time"),
+  })
   .partial()
   .strict();
 
-export type MySettings = { whatsappNumber: string | null; enabled: boolean; times: string[]; lastSentAt: string | null };
-export type GroupSettings = { enabled: boolean; time: string; lastSentAt: string | null };
+export type MySettings = { whatsappNumber: string | null; enabled: boolean };
+export type GroupSettings = { enabled: boolean; times: string[]; lastSentAt: string | null };
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 
 export async function getMySettings(db: Db, userId: string): Promise<MySettings> {
   const [row] = await db.select().from(ecReminderSettings).where(eq(ecReminderSettings.userId, userId)).limit(1);
-  return { whatsappNumber: row?.whatsappNumber ?? null, enabled: row?.enabled ?? false, times: row?.times ?? [], lastSentAt: iso(row?.lastSentAt ?? null) };
+  return { whatsappNumber: row?.whatsappNumber ?? null, enabled: row?.enabled ?? false };
 }
 
 export async function saveMySettings(db: Db, userId: string, patch: z.infer<typeof mySettingsSchema>): Promise<MySettings> {
   const next = { ...patch };
   const current = await getMySettings(db, userId);
   const number = next.whatsappNumber !== undefined ? next.whatsappNumber : current.whatsappNumber;
-  const times = next.times ?? current.times;
-  // Switching on needs somewhere to send to and something to send at.
-  if (next.enabled === true && (!number || times.length === 0)) next.enabled = false;
+  // Being tagged needs a number to tag.
+  if (next.enabled === true && !number) next.enabled = false;
   const insert = db.insert(ecReminderSettings).values({ userId, ...next });
   if (Object.keys(next).length > 0) await insert.onConflictDoUpdate({ target: ecReminderSettings.userId, set: next });
   else await insert.onConflictDoNothing();
@@ -61,7 +70,7 @@ export async function saveMySettings(db: Db, userId: string, patch: z.infer<type
 
 export async function getGroupSettings(db: Db): Promise<GroupSettings> {
   const [row] = await db.select().from(ecGroupSettings).where(eq(ecGroupSettings.id, 1)).limit(1);
-  return { enabled: row?.enabled ?? false, time: row?.time ?? "21:00", lastSentAt: iso(row?.lastSentAt ?? null) };
+  return { enabled: row?.enabled ?? false, times: row?.times ?? ["21:00"], lastSentAt: iso(row?.lastSentAt ?? null) };
 }
 
 export async function saveGroupSettings(db: Db, patch: z.infer<typeof groupSettingsSchema>): Promise<GroupSettings> {
@@ -71,17 +80,17 @@ export async function saveGroupSettings(db: Db, patch: z.infer<typeof groupSetti
   return getGroupSettings(db);
 }
 
-export type MemberOverview = { userId: string; name: string; enabled: boolean; hasNumber: boolean; times: string[]; lastSentAt: string | null };
+export type MemberOverview = { userId: string; name: string; enabled: boolean; hasNumber: boolean };
 
 /** Owner view of who has reminders on. Never includes the numbers themselves. */
 export async function listOverview(db: Db): Promise<MemberOverview[]> {
   const rows = await db
-    .select({ userId: users.id, name: users.name, enabled: ecReminderSettings.enabled, number: ecReminderSettings.whatsappNumber, times: ecReminderSettings.times, lastSentAt: ecReminderSettings.lastSentAt })
+    .select({ userId: users.id, name: users.name, enabled: ecReminderSettings.enabled, number: ecReminderSettings.whatsappNumber })
     .from(users)
     .leftJoin(ecReminderSettings, eq(ecReminderSettings.userId, users.id))
     .where(eq(users.disabled, false))
     .orderBy(asc(users.name));
-  return rows.map((r) => ({ userId: r.userId, name: r.name, enabled: r.enabled ?? false, hasNumber: !!r.number, times: r.times ?? [], lastSentAt: iso(r.lastSentAt) }));
+  return rows.map((r) => ({ userId: r.userId, name: r.name, enabled: r.enabled ?? false, hasNumber: !!r.number }));
 }
 
 /** A one-off message to the member themselves, so they can check that tagging works. */
@@ -115,47 +124,90 @@ async function deliver(db: Db, key: string, msg: MisaMessage, send: Sender): Pro
   }
 }
 
-export type TickResult = { group: "off" | "not_due" | "sent" | "failed" | "done"; sent: number; failed: number };
+export type TickResult = { group: "off" | "not_due" | "sent" | "failed" | "done" | "all_done"; sent: number; failed: number };
 
 /**
- * Called every few minutes by an external ping. Sends whatever is due now and nothing twice: each slot is claimed in
- * ec_reminder_log first. A slot is due from its minute until 20 minutes later, so a missed ping never causes a late burst.
+ * Who still has to finish today. A member counts while their 75 Hard is running today (in their own time zone) and
+ * today's log is not completed. Those who opted in with a number are tagged; pending members without one are named.
+ * Null when everyone running is done (or nobody is running), so nothing needs to be sent.
+ */
+export async function pendingToday(db: Db, now: Date): Promise<Pending | null> {
+  const members = await db
+    .select({ id: users.id, name: users.name, timeZone: users.timeZone, number: ecReminderSettings.whatsappNumber, optedIn: ecReminderSettings.enabled })
+    .from(users)
+    .leftJoin(ecReminderSettings, eq(ecReminderSettings.userId, users.id))
+    .where(eq(users.disabled, false));
+  if (members.length === 0) return null;
+
+  const programmes = await db
+    .select()
+    .from(commitments)
+    .where(and(eq(commitments.active, true), inArray(commitments.userId, members.map((m) => m.id))))
+    .orderBy(desc(commitments.startDate));
+  const latest = new Map<string, (typeof programmes)[number]>();
+  for (const c of programmes) if (!latest.has(c.userId)) latest.set(c.userId, c);
+
+  const running: { m: (typeof members)[number]; programmeId: string; today: string }[] = [];
+  for (const m of members) {
+    const c = latest.get(m.id);
+    if (!c) continue;
+    const today = localDate(now, m.timeZone);
+    const day = dayNumber(c.startDate, today);
+    if (day !== null && day <= c.totalDays) running.push({ m, programmeId: c.id, today });
+  }
+  if (running.length === 0) return null;
+
+  const logs = await db
+    .select({ userId: dailyLogs.userId, logDate: dailyLogs.logDate, completed: dailyLogs.completed })
+    .from(dailyLogs)
+    .where(and(inArray(dailyLogs.userId, running.map((r) => r.m.id)), inArray(dailyLogs.logDate, [...new Set(running.map((r) => r.today))])));
+  const completed = new Set(logs.filter((l) => l.completed).map((l) => `${l.userId}:${l.logDate}`));
+
+  const pending = running.filter((r) => !completed.has(`${r.m.id}:${r.today}`));
+  if (pending.length === 0) return null;
+  return {
+    numbers: pending.filter((r) => r.m.optedIn && r.m.number).map((r) => r.m.number!),
+    names: pending.filter((r) => !r.m.number).map((r) => r.m.name),
+    done: running.length - pending.length,
+    total: running.length,
+  };
+}
+
+/**
+ * Called every 15 minutes by an external ping. Sends whatever group reminder is due now and nothing twice: each slot is
+ * claimed in ec_reminder_log first. A slot is due from its minute until 20 minutes later, so a missed ping never causes
+ * a late burst. A slot where everyone has finished sends nothing.
  */
 export async function runTick(db: Db, now: Date, send: Sender = sendViaMisa): Promise<TickResult> {
   const result: TickResult = { group: "off", sent: 0, failed: 0 };
 
   const group = await getGroupSettings(db);
-  if (group.enabled) {
-    const [owner] = await db.select({ timeZone: users.timeZone }).from(users).where(eq(users.role, "OWNER")).limit(1);
-    const { date, minutes } = localParts(now, owner?.timeZone ?? "Asia/Kolkata");
-    if (dueTimes([group.time], minutes).length === 0) result.group = "not_due";
-    else {
-      const key = `group:${date}`;
-      if (!(await claim(db, key, "group", null))) result.group = "done";
-      else {
-        result.group = await deliver(db, key, groupMessage(key), send);
-        if (result.group === "sent") await db.update(ecGroupSettings).set({ lastSentAt: now }).where(eq(ecGroupSettings.id, 1));
-      }
-    }
-  }
+  if (!group.enabled) return result;
 
-  const people = await db
-    .select({ userId: ecReminderSettings.userId, number: ecReminderSettings.whatsappNumber, times: ecReminderSettings.times, timeZone: users.timeZone })
-    .from(ecReminderSettings)
-    .innerJoin(users, eq(users.id, ecReminderSettings.userId))
-    .where(and(eq(ecReminderSettings.enabled, true), eq(users.disabled, false), sql`${ecReminderSettings.whatsappNumber} is not null`));
+  const [owner] = await db.select({ timeZone: users.timeZone }).from(users).where(eq(users.role, "OWNER")).limit(1);
+  const { date, minutes } = localParts(now, owner?.timeZone ?? "Asia/Kolkata");
+  const due = dueTimes(group.times, minutes);
+  if (due.length === 0) return { ...result, group: "not_due" };
 
-  for (const p of people) {
-    const { date, minutes } = localParts(now, p.timeZone);
-    for (const t of dueTimes(p.times, minutes)) {
-      const key = `user:${p.userId}:${date}T${t}`;
-      if (!(await claim(db, key, "user", p.userId))) continue;
-      const outcome = await deliver(db, key, personalMessage(p.number!, key), send);
-      if (outcome === "sent") {
-        result.sent++;
-        await db.update(ecReminderSettings).set({ lastSentAt: now }).where(eq(ecReminderSettings.userId, p.userId));
-      } else result.failed++;
+  const outcomes = new Set<TickResult["group"]>();
+  for (const t of due) {
+    const pending = await pendingToday(db, now);
+    if (!pending) {
+      outcomes.add("all_done");
+      continue;
     }
+    const key = `group:${date}T${t}`;
+    if (!(await claim(db, key, "group", null))) {
+      outcomes.add("done");
+      continue;
+    }
+    const outcome = await deliver(db, key, reminderMessage(pending, key), send);
+    outcomes.add(outcome);
+    if (outcome === "sent") {
+      result.sent++;
+      await db.update(ecGroupSettings).set({ lastSentAt: now }).where(eq(ecGroupSettings.id, 1));
+    } else result.failed++;
   }
+  result.group = (["failed", "sent", "done", "all_done"] as const).find((o) => outcomes.has(o)) ?? "done";
   return result;
 }

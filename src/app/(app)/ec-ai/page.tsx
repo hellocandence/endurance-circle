@@ -22,10 +22,10 @@ export default async function EcAiPage() {
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-3xl font-semibold tracking-tight">EC AI</h1>
-        <p className="text-ink-muted">WhatsApp reminders for the circle. Pick when, and the bot nudges you.</p>
+        <p className="text-ink-muted">WhatsApp reminders for the circle. The bot tags whoever still has tasks to finish.</p>
       </div>
       <EcGroupCard group={group} isOwner={owner} />
-      <EcReminders mine={mine} timeZone={profile.timeZone} />
+      <EcReminders mine={mine} />
       {overview && <EcOverview members={overview} />}
     </div>
   );

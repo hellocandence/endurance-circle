@@ -1,21 +1,22 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { dueTimes, localParts, normalizeTimes, timesEvery } from "@/lib/ec-times";
+import { dueTimes, isValidTime, localParts, normalizeTimes } from "@/lib/ec-times";
 import * as t from "@/server/db/schema";
 import { can } from "@/server/rbac/can";
 import { normalizeNumber } from "@/server/ec/phone";
-import { groupMessage, personalMessage } from "@/server/ec/messages";
+import { reminderMessage } from "@/server/ec/messages";
 import { sendViaMisa, type MisaMessage } from "@/server/ec/misa";
-import { getGroupSettings, getMySettings, groupSettingsSchema, mySettingsSchema, runTick, saveGroupSettings, saveMySettings, sendTest } from "@/server/ec/service";
+import { getGroupSettings, getMySettings, groupSettingsSchema, mySettingsSchema, pendingToday, runTick, saveGroupSettings, saveMySettings, sendTest } from "@/server/ec/service";
 import { makeTestDb } from "./helpers/db";
 
 describe("times", () => {
-  it("builds 'every N hours' lists and keeps them inside 06:00-23:59", () => {
-    expect(timesEvery(3, "08:00", "22:00")).toEqual(["08:00", "11:00", "14:00", "17:00", "20:00"]);
-    expect(timesEvery(2, "05:00", "10:00")).toEqual([]); // 05:00 is before the quiet window ends
+  it("keeps the last allowed time at 23:45, the last ping of the day", () => {
+    expect(isValidTime("23:45")).toBe(true);
+    expect(isValidTime("23:46")).toBe(false);
+    expect(isValidTime("05:59")).toBe(false);
   });
-  it("drops invalid, duplicate and night-time entries, sorted, capped at 12", () => {
+  it("drops invalid, duplicate and night-time entries, sorted, capped at 4", () => {
     expect(normalizeTimes(["21:00", "09:00", "09:00", "03:00", "25:00", "nope"])).toEqual(["09:00", "21:00"]);
-    expect(normalizeTimes(Array.from({ length: 30 }, (_, i) => `${String(6 + (i % 18)).padStart(2, "0")}:${i < 18 ? "00" : "30"}`))).toHaveLength(12);
+    expect(normalizeTimes(["06:00", "07:00", "08:00", "09:00", "10:00", "11:00"])).toHaveLength(4);
   });
   it("a slot is due from its minute for 20 minutes, never before, never hours later", () => {
     expect(dueTimes(["09:00"], 8 * 60 + 59)).toEqual([]);
@@ -36,12 +37,17 @@ describe("phone numbers and messages", () => {
     expect(normalizeNumber("0091 98765 43210")).toBe("919876543210");
     for (const bad of ["", "abc", "123", "+1234567890123456", null, 5]) expect(normalizeNumber(bad), String(bad)).toBeNull();
   });
-  it("a personal message tags exactly that one number; the group message tags nobody", () => {
-    const m = personalMessage("919876543210", "user:x:2026-11-23T09:00");
-    expect(m.mentions).toEqual(["919876543210"]);
-    expect(m.text.startsWith("@919876543210 ")).toBe(true);
-    expect(groupMessage("group:2026-11-23").mentions).toEqual([]);
-    expect(personalMessage("919876543210", "k")).toEqual(personalMessage("919876543210", "k")); // same slot, same text
+  it("tags exactly the numbers given, each as @number in the text, and names those without a number", () => {
+    const m = reminderMessage({ numbers: ["919000000001", "919000000002"], names: ["Ansh"], done: 0, total: 3 }, "group:2026-11-23T09:00");
+    expect(m.mentions).toEqual(["919000000001", "919000000002"]);
+    expect(m.text).toContain("@919000000001 @919000000002");
+    expect(m.text).toContain("Nobody has");
+    expect(m.text).toContain("Also waiting: Ansh.");
+    const some = reminderMessage({ numbers: ["919000000002"], names: [], done: 2, total: 3 }, "k");
+    expect(some.text.startsWith("2/3 done today")).toBe(true);
+    expect(some.mentions).toEqual(["919000000002"]);
+    expect(reminderMessage({ numbers: [], names: [], done: 0, total: 1 }, "k").mentions).toEqual([]);
+    expect(reminderMessage({ numbers: ["9"], names: [], done: 1, total: 2 }, "k")).toEqual(reminderMessage({ numbers: ["9"], names: [], done: 1, total: 2 }, "k")); // same slot, same text
   });
 });
 
@@ -51,8 +57,15 @@ describe("validation and permissions", () => {
     expect(mySettingsSchema.safeParse({ userId: "x" }).success).toBe(false);
     expect(mySettingsSchema.safeParse({ whatsappNumber: "12" }).success).toBe(false);
     expect(mySettingsSchema.safeParse({ whatsappNumber: "" }).data).toEqual({ whatsappNumber: null });
-    expect(groupSettingsSchema.safeParse({ time: "03:00" }).success).toBe(false);
-    expect(groupSettingsSchema.safeParse({ time: "21:30", enabled: true }).success).toBe(true);
+    expect(mySettingsSchema.safeParse({ times: ["09:00"] }).success).toBe(false); // personal schedules are gone
+  });
+  it("the group reminder takes 1 to 4 valid times, sorted", () => {
+    expect(groupSettingsSchema.safeParse({ times: ["03:00"] }).success).toBe(false);
+    expect(groupSettingsSchema.safeParse({ times: ["23:50"] }).success).toBe(false);
+    expect(groupSettingsSchema.safeParse({ times: [] }).success).toBe(false);
+    expect(groupSettingsSchema.safeParse({ times: ["09:00", "10:00", "11:00", "12:00", "13:00"] }).success).toBe(false);
+    expect(groupSettingsSchema.safeParse({ time: "21:30" }).success).toBe(false);
+    expect(groupSettingsSchema.safeParse({ times: ["21:30", "09:00"], enabled: true }).data).toEqual({ times: ["09:00", "21:30"], enabled: true });
   });
   it("only the member edits their reminders; the owner reads them; other members see nothing", () => {
     const me = { id: "a", role: "MEMBER" as const }, other = { id: "b", role: "MEMBER" as const }, owner = { id: "o", role: "OWNER" as const };
@@ -87,11 +100,15 @@ describe("Misa client", () => {
 
 describe("tick", () => {
   let ctx: Awaited<ReturnType<typeof makeTestDb>>;
-  let vaibhav: string, ansh: string, owner: string;
+  let vaibhav: string, ansh: string, owner: string, ravi: string;
   const sent: { msg: MisaMessage; key: string }[] = [];
   const send = async (msg: MisaMessage, key: string) => void sent.push({ msg, key });
   const at = (hhmmIst: string) => new Date(`2026-11-23T${hhmmIst}:00+05:30`);
   const db = () => ctx.db;
+  const logDay = async (userId: string, programmeId: string, completed: boolean) => {
+    await db().insert(t.dailyLogs).values({ userId, commitmentId: programmeId, logDate: "2026-11-23", dayNumber: 3, isSunday: false, completed });
+  };
+  const programmes: Record<string, string> = {};
 
   beforeAll(async () => {
     ctx = await makeTestDb();
@@ -99,78 +116,109 @@ describe("tick", () => {
       { email: "o@e.test", name: "Owner", role: "OWNER" },
       { email: "v@e.test", name: "Vaibhav" },
       { email: "a@e.test", name: "Ansh" },
+      { email: "r@e.test", name: "Ravi" },
     ]).returning({ id: t.users.id });
-    [owner, vaibhav, ansh] = rows.map((r) => r.id);
+    [owner, vaibhav, ansh, ravi] = rows.map((r) => r.id);
+    const cs = await ctx.db.insert(t.commitments).values([vaibhav, ansh].map((userId) => ({ userId, startDate: "2026-11-21" }))).returning({ id: t.commitments.id, userId: t.commitments.userId });
+    for (const c of cs) programmes[c.userId] = c.id;
+    // The owner and Ravi have no 75 Hard running, so they are never tagged or counted.
+    await saveMySettings(db(), vaibhav, { whatsappNumber: "919000000001", enabled: true });
+    await saveMySettings(db(), ansh, { whatsappNumber: "919000000002", enabled: true });
+    await saveMySettings(db(), ravi, { whatsappNumber: "919000000003", enabled: true });
   });
   afterAll(() => ctx.close());
 
-  it("does nothing while everything is off", async () => {
+  it("does nothing while the group reminder is off", async () => {
     expect(await runTick(db(), at("21:00"), send)).toEqual({ group: "off", sent: 0, failed: 0 });
     expect(sent).toHaveLength(0);
   });
 
-  it("switching on needs a number and times", async () => {
-    expect((await saveMySettings(db(), vaibhav, { enabled: true })).enabled).toBe(false);
-    const s = await saveMySettings(db(), vaibhav, { whatsappNumber: "919000000001", times: ["09:00", "12:00", "15:00"], enabled: true });
-    expect(s).toMatchObject({ whatsappNumber: "919000000001", enabled: true, times: ["09:00", "12:00", "15:00"] });
-    await saveMySettings(db(), ansh, { whatsappNumber: "919000000002", times: ["12:00"], enabled: true });
+  it("switching on tagging needs only a number", async () => {
+    expect((await saveMySettings(db(), owner, { enabled: true })).enabled).toBe(false);
+    expect(await getMySettings(db(), vaibhav)).toEqual({ whatsappNumber: "919000000001", enabled: true });
   });
 
-  it("sends each person only their own slot, tagging only them, once", async () => {
+  it("saves 1 to 4 times for the group reminder", async () => {
+    expect(await getGroupSettings(db())).toMatchObject({ enabled: false, times: ["21:00"] });
+    expect((await saveGroupSettings(db(), groupSettingsSchema.parse({ enabled: true, times: ["21:00", "09:00", "15:00"] }))).times).toEqual(["09:00", "15:00", "21:00"]);
+  });
+
+  it("nobody done: tags everyone whose day is running, once per slot", async () => {
     sent.length = 0;
-    expect(await runTick(db(), at("09:02"), send)).toMatchObject({ sent: 1, failed: 0 });
-    expect(sent.map((s) => s.msg.mentions)).toEqual([["919000000001"]]);
-    expect(await runTick(db(), at("09:07"), send)).toMatchObject({ sent: 0 }); // same slot, no duplicate
+    expect(await runTick(db(), at("08:59"), send)).toMatchObject({ group: "not_due", sent: 0 });
+    const r = await runTick(db(), at("09:02"), send);
+    expect(r).toMatchObject({ group: "sent", sent: 1, failed: 0 });
     expect(sent).toHaveLength(1);
-    await runTick(db(), at("12:01"), send);
-    expect(sent.map((s) => s.msg.mentions[0]).sort()).toEqual(["919000000001", "919000000001", "919000000002"].sort());
-    expect((await getMySettings(db(), vaibhav)).lastSentAt).not.toBeNull();
+    expect([...sent[0].msg.mentions].sort()).toEqual(["919000000001", "919000000002"]);
+    expect(sent[0].msg.text).toContain("Nobody has");
+    expect(sent[0].key).toBe("group:2026-11-23T09:00");
+    expect((await runTick(db(), at("09:07"), send)).group).toBe("done"); // same slot, no duplicate
+    expect(sent).toHaveLength(1);
+    expect((await getGroupSettings(db())).lastSentAt).not.toBeNull();
+  });
+
+  it("someone done: tags only the ones still to finish", async () => {
+    sent.length = 0;
+    await logDay(vaibhav, programmes[vaibhav], true);
+    await runTick(db(), at("15:01"), send);
+    expect(sent).toHaveLength(1);
+    expect(sent[0].msg.mentions).toEqual(["919000000002"]);
+    expect(sent[0].msg.text).toContain("1/2 done today");
+    expect(sent[0].msg.text).not.toContain("919000000001");
+  });
+
+  it("an unfinished (saved but not complete) day still counts as pending", async () => {
+    await logDay(ansh, programmes[ansh], false);
+    expect(await pendingToday(db(), at("16:00"))).toMatchObject({ numbers: ["919000000002"], done: 1, total: 2 });
+  });
+
+  it("everyone done: sends nothing", async () => {
+    sent.length = 0;
+    await db().update(t.dailyLogs).set({ completed: true });
+    await saveGroupSettings(db(), { times: ["21:00"] });
+    expect(await runTick(db(), at("21:01"), send)).toEqual({ group: "all_done", sent: 0, failed: 0 });
+    expect(sent).toHaveLength(0);
+  });
+
+  it("members who opted out are not tagged; those without a number are named", async () => {
+    await db().update(t.dailyLogs).set({ completed: false });
+    await saveMySettings(db(), ansh, { enabled: false });
+    await saveMySettings(db(), vaibhav, { whatsappNumber: null, enabled: false });
+    const p = await pendingToday(db(), at("21:05"));
+    expect(p).toMatchObject({ numbers: [], names: ["Vaibhav"], done: 0, total: 2 });
   });
 
   it("two ticks at the same moment send once", async () => {
     sent.length = 0;
-    await Promise.all([runTick(db(), at("15:00"), send), runTick(db(), at("15:00"), send)]);
+    await saveMySettings(db(), ansh, { enabled: true });
+    await saveGroupSettings(db(), { times: ["19:00"] });
+    await Promise.all([runTick(db(), at("19:00"), send), runTick(db(), at("19:00"), send)]);
     expect(sent).toHaveLength(1);
   });
 
   it("a missed slot is not sent hours later", async () => {
     sent.length = 0;
-    await saveMySettings(db(), ansh, { times: ["12:00", "18:00"] });
-    await runTick(db(), at("20:30"), send);
+    await saveGroupSettings(db(), { times: ["12:00"] });
+    expect((await runTick(db(), at("20:30"), send)).group).toBe("not_due");
     expect(sent).toHaveLength(0);
-  });
-
-  it("sends the group reminder once a day at the owner's time, with no tags", async () => {
-    sent.length = 0;
-    expect((await saveGroupSettings(db(), { enabled: true, time: "21:00" })).time).toBe("21:00");
-    expect((await runTick(db(), at("20:59"), send)).group).toBe("not_due");
-    expect((await runTick(db(), at("21:01"), send)).group).toBe("sent");
-    expect((await runTick(db(), at("21:06"), send)).group).toBe("done");
-    expect(sent).toHaveLength(1);
-    expect(sent[0].msg.mentions).toEqual([]);
-    expect((await getGroupSettings(db())).lastSentAt).not.toBeNull();
-    expect(owner).toBeTruthy();
   });
 
   it("a failed send is retried inside the window, then sent exactly once", async () => {
     sent.length = 0;
-    await saveMySettings(db(), ansh, { times: ["16:00"] });
+    await saveGroupSettings(db(), { times: ["16:00"] });
     let fail = true;
     const flaky = async (msg: MisaMessage, key: string) => { if (fail) throw new Error("Misa answered 503"); sent.push({ msg, key }); };
-    expect(await runTick(db(), at("16:01"), flaky)).toMatchObject({ sent: 0, failed: 1 });
+    expect(await runTick(db(), at("16:01"), flaky)).toMatchObject({ group: "failed", sent: 0, failed: 1 });
     fail = false;
-    expect(await runTick(db(), at("16:06"), flaky)).toMatchObject({ sent: 1, failed: 0 });
-    expect(await runTick(db(), at("16:11"), flaky)).toMatchObject({ sent: 0, failed: 0 });
+    expect(await runTick(db(), at("16:06"), flaky)).toMatchObject({ group: "sent", sent: 1, failed: 0 });
+    expect(await runTick(db(), at("16:11"), flaky)).toMatchObject({ group: "done", sent: 0, failed: 0 });
     expect(sent).toHaveLength(1);
   });
 
-  it("disabled members are skipped, and a test message tags only the requester", async () => {
+  it("a test message tags only the requester", async () => {
     sent.length = 0;
-    await saveMySettings(db(), ansh, { enabled: false, times: ["17:00"] });
-    await runTick(db(), at("17:01"), send);
-    expect(sent).toHaveLength(0);
-    expect(await sendTest(db(), vaibhav, send)).toBe("sent");
-    expect(sent[0].msg.mentions).toEqual(["919000000001"]);
+    expect(await sendTest(db(), ansh, send)).toBe("sent");
+    expect(sent[0].msg.mentions).toEqual(["919000000002"]);
     expect(await sendTest(db(), owner, send)).toBe("no_number");
   });
 });

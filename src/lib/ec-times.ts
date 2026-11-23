@@ -1,29 +1,29 @@
 // Pure helpers for reminder times, shared by the server and the EC AI screen.
-// Times are "HH:MM" in the member's own time zone. Nothing is sent between 00:00 and 06:00.
+// Times are "HH:MM" in the owner's time zone. Nothing is sent between 00:00 and 06:00. The last ping of the day
+// is 23:45, so 23:45 is the latest time that can still be picked up.
 
 export const EARLIEST = "06:00";
-export const LATEST = "23:59";
-export const MAX_TIMES = 12;
+export const LATEST = "23:45";
+export const MAX_TIMES = 4;
+
+/** Starting times when the owner changes how many reminders a day there should be. */
+export const DEFAULT_TIMES: Record<number, string[]> = {
+  1: ["21:00"],
+  2: ["12:00", "21:00"],
+  3: ["09:00", "15:00", "21:00"],
+  4: ["09:00", "13:00", "17:00", "21:00"],
+};
 
 const TIME_RE = /^([01]\d|2[0-3]):([0-5]\d)$/;
 
 export const isValidTime = (v: unknown): v is string => typeof v === "string" && TIME_RE.test(v) && v >= EARLIEST && v <= LATEST;
 
 export const toMinutes = (t: string): number => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
-export const fromMinutes = (m: number): string => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
 
 /** Sorted, de-duplicated, valid times only, at most MAX_TIMES. */
 export function normalizeTimes(list: unknown): string[] {
   if (!Array.isArray(list)) return [];
   return [...new Set(list.filter(isValidTime))].sort().slice(0, MAX_TIMES);
-}
-
-/** "Every 3 hours from 08:00 to 22:00" becomes ["08:00","11:00","14:00","17:00","20:00"]. */
-export function timesEvery(hours: number, start: string, end: string): string[] {
-  if (!(hours >= 1) || !isValidTime(start) || !isValidTime(end)) return [];
-  const out: string[] = [];
-  for (let m = toMinutes(start); m <= toMinutes(end) && out.length < MAX_TIMES; m += Math.round(hours * 60)) out.push(fromMinutes(m));
-  return out;
 }
 
 /** Date ("YYYY-MM-DD") and minutes since midnight of an instant in a time zone. */
