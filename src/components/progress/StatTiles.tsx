@@ -2,7 +2,7 @@ import type { MemberStats } from "@/server/dashboard/analytics";
 
 export function StatTiles({ stats }: { stats: MemberStats }) {
   const tiles = [
-    { label: "Completion", value: `${stats.completionPct}%`, hint: `${stats.completedDays} of ${stats.elapsedDays} days` },
+    { label: "Completion", value: `${stats.completionPct}%`, hint: `${stats.completedDays} perfect of ${stats.elapsedDays} days` },
     { label: "Current streak", value: `${stats.streak}`, hint: stats.streak === 1 ? "perfect day in a row" : "perfect days in a row" },
     { label: "Longest streak", value: `${stats.longestRun}`, hint: stats.longestRun === 1 ? "day" : "days" },
     { label: "Tasks ticked", value: `${stats.avgTaskPct}%`, hint: stats.bestWeek ? `best week: W${stats.bestWeek}` : "of required tasks" },

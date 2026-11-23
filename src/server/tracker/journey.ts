@@ -23,7 +23,7 @@ export async function getJourneyRows(db: Db, userId: string, now = new Date()) {
     .where(and(eq(dailyLogs.userId, userId), eq(dailyLogs.commitmentId, programme.id)))
     .orderBy(desc(dailyLogs.logDate));
   const today = localDate(now, user.timeZone);
-  const days = rows.map((r) => ({ date: r.logDate, completed: r.completed }));
+  const days = rows.map((r) => ({ date: r.logDate, completed: r.completed, doneCount: r.doneCount, requiredCount: r.requiredCount }));
   const win = { startDate: programme.startDate, today, totalDays: programme.totalDays };
 
   return {

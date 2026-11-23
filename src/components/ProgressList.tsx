@@ -19,8 +19,8 @@ export function ProgressList({ rows, meId }: { rows: OverviewRow[]; meId: string
               </h2>
               <span className="text-sm text-ink-muted">{r.dayNumber ? `Day ${r.dayNumber}` : "Not started"}</span>
             </div>
-            <Bar label="Overall" value={r.window.pct} detail={`${r.window.completed} of ${r.window.elapsed} days`} />
-            <Bar label="Last 7 days" value={r.last7.pct} detail={`${r.last7.completed} of ${r.last7.elapsed} days`} />
+            <Bar label="Overall" value={r.window.pct} detail={`${r.window.completed} perfect of ${r.window.elapsed} days`} />
+            <Bar label="Last 7 days" value={r.last7.pct} detail={`${r.last7.completed} perfect of ${r.last7.elapsed} days`} />
             <MiniStrip states={r.recent} />
             <div className="flex items-center justify-between text-sm text-ink-muted">
               <span>{r.streak} {r.streak === 1 ? "day" : "days"} streak</span>

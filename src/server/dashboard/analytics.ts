@@ -74,9 +74,9 @@ export type MemberStats = {
 };
 
 export function memberStats(cells: DayCell[], programme: { startDate: string; totalDays: number }, today: string): MemberStats {
-  const days = cells.map((c) => ({ date: c.date, completed: c.state === "done" }));
+  const days = cells.map((c) => ({ date: c.date, completed: c.state === "done", doneCount: c.done, requiredCount: c.required }));
   const win = completion(days, { ...programme, today });
-  const finished = cells.filter((c) => c.state === "done" || c.state === "missed");
+  const finished = cells.filter((c) => c.state === "done" || c.state === "missed" || (c.state === "today" && c.done > 0)); // today joins once something is ticked
   const required = finished.reduce((s, c) => s + c.required, 0);
   const done = finished.reduce((s, c) => s + Math.min(c.done, c.required), 0);
   const weeks = weeklyBars(cells).filter((w) => w.pct !== null);
@@ -103,7 +103,11 @@ export type MemberAnalytics = {
   weeks: WeekBar[];
   stats: MemberStats | null;
   updates: { date: string; text: string }[]; // the member's public update lines, newest first
+  /** Day by day, newest first, from public columns only: which tasks were ticked and the public update line. */
+  log: ActivityDay[];
 };
+
+export type ActivityDay = { date: string; dayNumber: number; state: DayState; done: number; required: number; tasks: { key: string; label: string; done: boolean }[]; updateText: string | null };
 
 /** One member's public analytics. Null when the member does not exist, is disabled or has not confirmed their email. */
 export async function getMemberAnalytics(db: Db, userId: string, now = new Date()): Promise<MemberAnalytics | null> {
@@ -116,11 +120,29 @@ export async function getMemberAnalytics(db: Db, userId: string, now = new Date(
     avatarUrl: person.avatarPhotoId ? `/api/photos/${person.id}?size=128&v=${person.avatarPhotoId}` : null,
     updates: logs.filter((l) => l.updateText).slice(0, 5).map((l) => ({ date: l.logDate, text: l.updateText as string })),
   };
-  if (!programme) return { ...base, dayNumber: null, programme: null, cells: [], weeks: [], stats: null };
+  if (!programme) return { ...base, dayNumber: null, programme: null, cells: [], weeks: [], stats: null, log: [] };
   const prog = { startDate: programme.startDate, totalDays: programme.totalDays };
   const cells = buildDaySeries({ ...prog, today, logs });
   const started = cells.filter((c) => c.state !== "future").length;
-  return { ...base, dayNumber: started || null, programme: prog, cells, weeks: weeklyBars(cells), stats: memberStats(cells, prog, today) };
+  const byDate = new Map(logs.map((l) => [l.logDate, l]));
+  const log: ActivityDay[] = cells
+    .filter((c) => c.state !== "future")
+    .reverse()
+    .slice(0, 14)
+    .map((c) => {
+      const row = byDate.get(c.date);
+      const ticked = new Set<string>(row?.doneTasks ?? []);
+      return {
+        date: c.date,
+        dayNumber: c.n,
+        state: c.state,
+        done: c.done,
+        required: c.required,
+        tasks: requiredTasks(isSunday(c.date)).map((key) => ({ key, label: TASK_LABELS[key], done: ticked.has(key) })),
+        updateText: row?.updateText ?? null,
+      };
+    });
+  return { ...base, dayNumber: started || null, programme: prog, cells, weeks: weeklyBars(cells), stats: memberStats(cells, prog, today), log };
 }
 
 export type OverviewRow = ProgressRow & {

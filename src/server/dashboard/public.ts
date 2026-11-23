@@ -34,7 +34,7 @@ export function circlePulse(members: PublicMember[]): CirclePulse {
   };
 }
 
-type Day = { date: string; completed: boolean };
+type Day = { date: string; completed: boolean; doneCount: number; requiredCount: number };
 
 /**
  * Loads every enabled member with their programme and day records, using ONLY the public column lists
@@ -64,7 +64,7 @@ export async function loadCircle(db: Db, now = new Date(), only?: string) {
 
   return people.map((p) => {
     const mine = logs.filter((l) => l.userId === p.id);
-    const days: Day[] = mine.map((l) => ({ date: l.logDate, completed: l.completed }));
+    const days: Day[] = mine.map((l) => ({ date: l.logDate, completed: l.completed, doneCount: l.doneCount, requiredCount: l.requiredCount }));
     return { person: p, programme: programmes.find((c) => c.userId === p.id) ?? null, logs: mine, days, today: localDate(now, p.timeZone) };
   });
 }

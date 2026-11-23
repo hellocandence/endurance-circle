@@ -55,7 +55,7 @@ describe("getPublicDashboard", () => {
   it("computes today's count, day number, streak, update line and completion %", async () => {
     const { members } = await getPublicDashboard(db(), NOW);
     const alice = members.find((m) => m.id === ids.alice)!;
-    expect(alice).toMatchObject({ dayNumber: 3, todayDone: 2, todayTotal: 10, streak: 2, updateText: "Day 3 and feeling good", commitmentPct: 100 });
+    expect(alice).toMatchObject({ dayNumber: 3, todayDone: 2, todayTotal: 10, streak: 2, updateText: "Day 3 and feeling good", commitmentPct: 73 });
     const bob = members.find((m) => m.id === ids.bob)!;
     expect(bob).toMatchObject({ dayNumber: 3, todayDone: 0, streak: 0, commitmentPct: 0, updateText: "Rest of the plan tomorrow" });
   });

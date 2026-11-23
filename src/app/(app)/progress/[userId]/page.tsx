@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Bar } from "@/components/progress/Bar";
+import { ActivityLog } from "@/components/progress/ActivityLog";
 import { Heatmap } from "@/components/progress/Heatmap";
 import { StatTiles } from "@/components/progress/StatTiles";
 import { WeekChart } from "@/components/progress/WeekChart";
@@ -56,6 +57,7 @@ export default async function MemberProgressPage({ params }: { params: Promise<{
             <h2 className="font-semibold">Every day</h2>
             <Heatmap cells={member.cells} />
           </GlassCard>
+          <ActivityLog days={member.log} />
           <GlassCard className="flex flex-col gap-2 p-4">
             <h2 className="font-semibold">Week by week</h2>
             <p className="text-sm text-ink-muted">Share of finished days completed in each week.</p>

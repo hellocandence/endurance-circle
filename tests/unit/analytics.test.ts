@@ -64,7 +64,7 @@ describe("getMemberAnalytics", () => {
     const a = (await getMemberAnalytics(db(), ids.alice, NOW))!;
     expect(a).toMatchObject({ name: "Alice", dayNumber: 3 });
     expect(a.cells.slice(0, 4).map((c) => c.state)).toEqual(["done", "done", "today", "future"]);
-    expect(a.stats).toMatchObject({ completionPct: 100, completedDays: 2, elapsedDays: 2, streak: 2, longestRun: 2, daysLeft: 72 });
+    expect(a.stats).toMatchObject({ completionPct: 73, completedDays: 2, elapsedDays: 3, streak: 2, longestRun: 2, daysLeft: 72 });
     expect(a.weeks[0]).toMatchObject({ completed: 2, elapsed: 2, pct: 100 });
     expect(a.updates).toEqual([{ date: "2026-11-23", text: "Day 3 and feeling good" }]);
   });
@@ -111,5 +111,16 @@ describe("getMyStats", () => {
   });
   it("is null without a programme", async () => {
     expect(await getMyStats(db(), "00000000-0000-0000-0000-000000000000", NOW)).toBeNull();
+  });
+});
+
+describe("activity log", () => {
+  it("lists each day newest first with the ticked tasks and the public update line", async () => {
+    const a = (await getMemberAnalytics(db(), ids.alice, NOW))!;
+    expect(a.log.map((d) => d.dayNumber)).toEqual([3, 2, 1]);
+    expect(a.log[0]).toMatchObject({ date: "2026-11-23", state: "today", updateText: "Day 3 and feeling good" });
+    expect(a.log[0].tasks.filter((t) => t.done).length).toBe(a.log[0].done);
+    expect(a.log[2]).toMatchObject({ state: "done", done: 10, required: 10 });
+    expect(JSON.stringify(a.log)).not.toContain(SECRET_NOTE);
   });
 });

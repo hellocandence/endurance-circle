@@ -250,3 +250,29 @@ describe("partial credit: below target but started earns half of the task's shar
     expect(eval_({ stretchMin: 15 }, SUN, true).missed).toEqual(["STRETCH"]);
   });
 });
+
+describe("completion % counts partly done days (the 0% bug)", () => {
+  const start = "2026-11-23";
+  it("day 1 with 4 of 10 tasks ticked shows 40%, not 0%", () => {
+    const days = [{ date: "2026-11-23", completed: false, doneCount: 4, requiredCount: 10 }];
+    expect(completion(days, { startDate: start, today: "2026-11-23", lastDays: 7 })).toEqual({ completed: 0, elapsed: 1, pct: 40 });
+    expect(completion(days, { startDate: start, today: "2026-11-23" }).pct).toBe(40);
+  });
+  it("an untouched today does not drag the % down", () => {
+    const days = [{ date: "2026-11-23", completed: true, doneCount: 10, requiredCount: 10 }];
+    expect(completion(days, { startDate: start, today: "2026-11-24" })).toEqual({ completed: 1, elapsed: 1, pct: 100 });
+  });
+  it("averages the share of tasks per day; a day with no log is 0", () => {
+    const days = [
+      { date: "2026-11-23", completed: true, doneCount: 10, requiredCount: 10 },
+      { date: "2026-11-24", completed: false, doneCount: 5, requiredCount: 10 },
+      // 25th: nothing logged
+      { date: "2026-11-26", completed: false, doneCount: 3, requiredCount: 10 },
+    ];
+    // today = 26th (started): (1 + 0.5 + 0 + 0.3) / 4 = 45%
+    expect(completion(days, { startDate: start, today: "2026-11-26", lastDays: 7 })).toEqual({ completed: 1, elapsed: 4, pct: 45 });
+  });
+  it("records without counts keep the all-or-nothing rule", () => {
+    expect(completion([{ date: "2026-11-23", completed: false }], { startDate: start, today: "2026-11-23" })).toEqual({ completed: 0, elapsed: 0, pct: 0 });
+  });
+});
