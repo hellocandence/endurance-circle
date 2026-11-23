@@ -75,11 +75,41 @@ export function taskStatus(input: DayInput, config: TrackerConfig = DEFAULT_CONF
   };
 }
 
+/**
+ * Credit per task: 1 when the target is met, PARTIAL_CREDIT when something was logged but the target is not met
+ * (only tasks with a numeric target can be partial), otherwise 0. Every required task has the same weight, so a
+ * partial task earns half of its share of the day (e.g. a 10% task earns 5%).
+ */
+export const PARTIAL_CREDIT = 0.5;
+
+export function taskCredit(input: DayInput, config: TrackerConfig = DEFAULT_CONFIG): Record<TaskKey, number> {
+  const status = taskStatus(input, config);
+  const protein = proteinTarget(config.weightKg, config.proteinMultiplier);
+  const logged: Record<TaskKey, boolean> = {
+    RUN: input.runKm > 0,
+    WARM_PRE: false,
+    WARM_POST: false,
+    STRETCH: input.stretchMin > 0,
+    WATER: input.waterL > 0,
+    ELECTRO: false,
+    PROTEIN: protein !== null && input.proteinG > 0,
+    STUDY: input.studyMin > 0,
+    TECH: false,
+    GITHUB: false,
+    SATSANG: false,
+  };
+  const out = {} as Record<TaskKey, number>;
+  for (const k of TASK_KEYS) out[k] = status[k] ? 1 : logged[k] ? PARTIAL_CREDIT : 0;
+  return out;
+}
+
 export type DayResult = {
   required: TaskKey[];
   done: TaskKey[]; // required tasks that are ticked
   pending: TaskKey[]; // required tasks not yet ticked
   missed: TaskKey[]; // pending tasks once the day is over; empty while the day is still running
+  partial: TaskKey[]; // required tasks below target but started (they earn half credit; still pending)
+  percent: number; // weighted progress of the day, 0 to 100
   completed: boolean;
   doneCount: number;
   requiredCount: number;
@@ -94,11 +124,16 @@ export function evaluateDay(input: DayInput, opts: { date: string; dayOver: bool
   const status = taskStatus(input, opts.config ?? DEFAULT_CONFIG);
   const done = required.filter((k) => status[k]);
   const pending = required.filter((k) => !status[k]);
+  const credit = taskCredit(input, opts.config ?? DEFAULT_CONFIG);
+  const partial = pending.filter((k) => credit[k] > 0);
+  const percent = (required.reduce((sum, k) => sum + credit[k], 0) / required.length) * 100;
   return {
     required,
     done,
     pending,
     missed: opts.dayOver ? pending : [],
+    partial,
+    percent,
     completed: pending.length === 0,
     doneCount: done.length,
     requiredCount: required.length,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useState } from "react";
 
 const input = "glass glass-focus min-h-12 w-full rounded-2xl px-4 text-base text-ink placeholder:text-ink-muted";
 
@@ -8,6 +8,13 @@ export function NumberField({
   label, value, onChange, unit, step = 1, max, hint,
 }: { label: string; value: number; onChange: (n: number) => void; unit: string; step?: number; max: number; hint?: string }) {
   const id = useId();
+  // An empty box with "0" as a placeholder, so typing 25 gives 25 (never 025). The text is kept locally so a
+  // half-typed "2." is not rewritten under the cursor.
+  const show = (n: number) => (Number.isFinite(n) && n !== 0 ? String(n) : "");
+  const [text, setText] = useState(() => show(value));
+  useEffect(() => {
+    setText((t) => (Number(t || 0) === value ? t : show(value)));
+  }, [value]);
   return (
     <div className="flex flex-col gap-1.5">
       <label htmlFor={id} className="text-sm font-medium">{label}</label>
@@ -15,12 +22,16 @@ export function NumberField({
         <input
           id={id}
           type="number"
+          placeholder="0"
           inputMode="decimal"
           min={0}
           max={max}
           step={step}
-          value={Number.isFinite(value) ? value : 0}
-          onChange={(e) => onChange(Math.min(max, Math.max(0, e.target.valueAsNumber || 0)))}
+          value={text}
+          onChange={(e) => {
+            setText(e.target.value);
+            onChange(Math.min(max, Math.max(0, e.target.valueAsNumber || 0)));
+          }}
           className={input}
           aria-describedby={hint ? `${id}-hint` : undefined}
         />

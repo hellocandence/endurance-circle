@@ -46,7 +46,8 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
   const required = new Set<TaskKey>(result.required);
   const done = (k: TaskKey) => !result.pending.includes(k);
   const sunday = data.isSunday;
-  const pct = (result.doneCount / result.requiredCount) * 100;
+  const pct = result.percent;
+  const part = (k: TaskKey) => result.partial.includes(k);
 
   // Celebrate a task the moment it flips to done (not on first load), and the whole day when it completes.
   const { fire, layer } = useConfetti();
@@ -73,7 +74,7 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
       {layer}
       <header className="flex items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-ink-muted">{dateLabel}</p>
+          <p className="text-sm font-medium text-ink-muted">{dateLabel} · {Math.round(pct)}% of today</p>
           <h1 className="text-3xl font-semibold tracking-tight">Day {data.dayNumber ?? "–"}<span className="text-lg font-medium text-ink-muted"> of {data.totalDays}</span></h1>
           {sunday && <p className="mt-1 inline-block rounded-full bg-white/70 px-3 py-0.5 text-sm font-medium text-accent-strong">Sunday: recovery day</p>}
         </div>
@@ -89,7 +90,7 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
       )}
 
       {required.has("RUN") && (
-        <TaskCard title="Run" done={done("RUN")} tag={`${data.targets.runKm} km`}>
+        <TaskCard title="Run" done={done("RUN")} partial={part("RUN")} tag={`${data.targets.runKm} km`}>
           <NumberField label="Distance" value={values.runKm} onChange={(n) => set("runKm", n)} unit="km" step={0.1} max={100} />
           <div className="flex gap-2"><Chip onClick={() => set("runKm", data.targets.runKm)}>Log {data.targets.runKm} km</Chip></div>
         </TaskCard>
@@ -104,18 +105,18 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
           <Toggle label="Cool-down" checked={values.warmupPostDone} onChange={(b) => set("warmupPostDone", b)} />
         </TaskCard>
       )}
-      <TaskCard title="Stretching" done={values.stretchMin >= 20} tag={sunday ? "Required today" : "Optional"}>
+      <TaskCard title="Stretching" done={values.stretchMin >= 20} partial={values.stretchMin > 0 && values.stretchMin < 20} tag={sunday ? "Required today" : "Optional"}>
         <NumberField label="Stretching" value={values.stretchMin} onChange={(n) => set("stretchMin", n)} unit="min" max={300} hint="20 to 30 minutes." />
         <div className="flex gap-2"><Chip onClick={() => set("stretchMin", 25)}>Log 25 min</Chip></div>
       </TaskCard>
-      <TaskCard title="Water" done={done("WATER")} tag={`${data.targets.waterL} L`}>
+      <TaskCard title="Water" done={done("WATER")} partial={part("WATER")} tag={`${data.targets.waterL} L`}>
         <NumberField label="Water" value={values.waterL} onChange={(n) => set("waterL", n)} unit="L" step={0.25} max={20} />
         <div className="flex gap-2"><Chip onClick={() => set("waterL", Math.round((values.waterL + 0.5) * 100) / 100)}>+ 0.5 L</Chip></div>
       </TaskCard>
       <TaskCard title="Electrolytes" done={done("ELECTRO")}>
         <Toggle label="Electrolytes / salts taken" checked={values.electrolytesDone} onChange={(b) => set("electrolytesDone", b)} />
       </TaskCard>
-      <TaskCard title="Protein" done={done("PROTEIN")} tag={data.proteinTargetG ? `${data.proteinTargetG} g` : undefined}>
+      <TaskCard title="Protein" done={done("PROTEIN")} partial={part("PROTEIN")} tag={data.proteinTargetG ? `${data.proteinTargetG} g` : undefined}>
         <NumberField
           label="Protein"
           value={values.proteinG}
@@ -125,7 +126,7 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
           hint={data.proteinTargetG ? `Your target is ${data.proteinTargetG} g (from your weight).` : "Add your weight in Settings to get a protein target."}
         />
       </TaskCard>
-      <TaskCard title="Study" done={done("STUDY")} tag={`${data.targets.studyMin}+ min`}>
+      <TaskCard title="Study" done={done("STUDY")} partial={part("STUDY")} tag={`${data.targets.studyMin}+ min`}>
         <NumberField label="Study time" value={values.studyMin} onChange={(n) => set("studyMin", Math.round(n))} unit="min" max={600} />
         <TextField label="Topic" value={values.studyTopic} onChange={(s) => set("studyTopic", s)} max={200} placeholder="What did you study?" />
       </TaskCard>
@@ -146,6 +147,7 @@ export function TodayScreen({ data, userId }: { data: TrackerPayload; userId: st
         <TextField label="Private note" value={values.privateNotes} onChange={(s) => set("privateNotes", s)} max={2000} multiline hint="Visible to you and the circle owner only." />
       </GlassCard>
 
+      <GlassButton onClick={() => void retry()} disabled={status === "saving"} className="w-full">{status === "saving" ? "Saving…" : "Save"}</GlassButton>
       <div aria-live="polite" className="min-h-10 text-center text-sm text-ink-muted">
         {status === "saving" && "Saving…"}
         {status === "saved" && "Saved"}

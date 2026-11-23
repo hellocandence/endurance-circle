@@ -217,3 +217,36 @@ describe("longest perfect run", () => {
     expect(longestPerfectRun(d("2026-11-02", "2026-11-02"))).toBe(1);
   });
 });
+
+describe("partial credit: below target but started earns half of the task's share", () => {
+  it("a full day is 100%, an empty one 0%", () => {
+    expect(eval_({}).percent).toBe(100);
+    expect(evaluateDay({ ...full, runKm: 0, warmupPreDone: false, warmupPostDone: false, waterL: 0, electrolytesDone: false, proteinG: 0, studyMin: 0, techNote: "", githubContribution: false, readingMin: 0 }, { date: FRI, dayOver: false, config }).percent).toBe(0);
+  });
+
+  it("Sunday: stretching is 1 of 8 equal tasks (12.5%), so 15 of 20 minutes earns 6.25% and stays pending", () => {
+    const sunFull = { stretchMin: 25 };
+    expect(eval_(sunFull, SUN).percent).toBe(100);
+    const r = eval_({ stretchMin: 15 }, SUN);
+    expect(r.percent).toBe(93.75); // 7 full + half of one, out of 8
+    expect(r.partial).toEqual(["STRETCH"]);
+    expect(r.pending).toEqual(["STRETCH"]);
+    expect(r.completed).toBe(false); // the day itself still needs every target
+  });
+
+  it("only numeric-target tasks can be partial; toggles and text are all or nothing", () => {
+    const r = eval_({ runKm: 2, waterL: 1, studyMin: 20, proteinG: 40, warmupPreDone: false, electrolytesDone: false, githubContribution: false, techNote: "" });
+    expect(r.partial.sort()).toEqual(["PROTEIN", "RUN", "STUDY", "WATER"]);
+    expect(r.percent).toBe(40); // full: WARM_POST + SATSANG (2); half: RUN, WATER, PROTEIN, STUDY (2); nothing: the other 4
+  });
+
+  it("nothing logged is not partial, and protein without a weight target is not partial", () => {
+    expect(eval_({ runKm: 0 }).partial).toEqual([]);
+    const noWeight = evaluateDay({ ...full, proteinG: 0 }, { date: FRI, dayOver: false, config: { ...DEFAULT_CONFIG, weightKg: null } });
+    expect(noWeight.partial).toEqual([]);
+  });
+
+  it("the missed list and day count are unaffected (partial tasks are still missed once the day is over)", () => {
+    expect(eval_({ stretchMin: 15 }, SUN, true).missed).toEqual(["STRETCH"]);
+  });
+});

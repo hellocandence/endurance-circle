@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { useId, type ReactNode } from "react";
 import { GlassCard } from "@/components/ui";
 
-export function TaskCard({ title, done, tag, children }: { title: string; done: boolean; tag?: string; children: ReactNode }) {
+export function TaskCard({ title, done, partial = false, tag, children }: { title: string; done: boolean; partial?: boolean; tag?: string; children: ReactNode }) {
   const id = useId();
   return (
     <GlassCard role="group" aria-labelledby={id} aria-describedby={`${id}-state`} className="flex flex-col gap-3 p-4" data-done={done}>
@@ -22,7 +22,8 @@ export function TaskCard({ title, done, tag, children }: { title: string; done: 
         <h2 id={id} className="flex-1 text-base font-semibold">
           {title}
         </h2>
-        <span id={`${id}-state`} className="sr-only">{done ? "Done" : "Not done yet"}</span>
+        <span id={`${id}-state`} className="sr-only">{done ? "Done" : partial ? "Partly done, half credit" : "Not done yet"}</span>
+        {partial && !done && <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-900">Half credit</span>}
         {tag && <span className="rounded-full bg-white/70 px-2.5 py-0.5 text-xs font-medium text-ink-muted">{tag}</span>}
       </div>
       {children}

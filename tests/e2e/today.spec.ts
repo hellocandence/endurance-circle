@@ -281,3 +281,43 @@ test.describe("celebrations and the circle's activity", () => {
     await waitSaved(page);
   });
 });
+
+test.describe("typing, half credit and saving", () => {
+  test("a number box starts empty with 0 as its hint, so typing 25 gives 25 (not 025); below target earns half credit; Save and leaving the page both keep the data", async ({ page }) => {
+    await loginAs(page, "erin@e2e.test", SUNDAY);
+    await page.goto("/today");
+    await hydrated(page);
+
+    const stretch = page.getByRole("spinbutton", { name: "Stretching", exact: true });
+    await expect(stretch).toHaveValue("");
+    await expect(stretch).toHaveAttribute("placeholder", "0");
+    await stretch.pressSequentially("15");
+    await expect(stretch).toHaveValue("15");
+
+    // 15 of 20 minutes: not done, half of its share (1 of 8 equal tasks = 12.5%, so 6.25%, shown as 6)
+    const card = page.getByRole("group", { name: /^Stretching/ });
+    await expect(card).toContainText("Half credit");
+    await expect(ring(page)).toHaveAttribute("aria-valuenow", "6");
+    await expect(page.getByText(/6% of today/)).toBeVisible();
+    await expect(ring(page)).toHaveAttribute("aria-label", "0 of 8 tasks done");
+
+    // the Save button sends it straight away
+    await page.getByRole("button", { name: "Save" }).click();
+    await waitSaved(page);
+    await expect.poll(async () => (await (await page.request.get("/api/tracker/today")).json()).log?.stretchMin).toBe(15);
+
+    // changing the page right after typing still saves (no waiting for the debounce)
+    await page.getByRole("spinbutton", { name: "Water", exact: true }).pressSequentially("2");
+    await page.getByRole("link", { name: /progress/i }).first().click();
+    await page.waitForURL("**/progress");
+    await expect.poll(async () => (await (await page.request.get("/api/tracker/today")).json()).log?.waterL, { timeout: 5000 }).toBe(2);
+
+    // reaching the target turns half credit into done
+    await page.goto("/today");
+    await hydrated(page);
+    await expect(page.getByRole("spinbutton", { name: "Stretching", exact: true })).toHaveValue("15");
+    await page.getByRole("spinbutton", { name: "Stretching", exact: true }).fill("20");
+    await expect(page.getByRole("group", { name: /^Stretching/ })).not.toContainText("Half credit");
+    await expect(ring(page)).toHaveAttribute("aria-label", "1 of 8 tasks done");
+  });
+});

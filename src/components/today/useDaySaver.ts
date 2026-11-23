@@ -86,6 +86,7 @@ export function useDaySaver(userId: string, date: string, delayMs = 500) {
     return () => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide as () => void);
+      void flush(); // leaving the screen (tab change, back, link): send whatever is still waiting
     };
   }, [flush]);
 
