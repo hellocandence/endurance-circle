@@ -144,3 +144,16 @@ test("the circle shows each member's tasks for today and who has done what", asy
   const feed = await page.request.get("/api/dashboard/public");
   expect(JSON.stringify(await feed.json())).not.toMatch(/weight|privateNotes|proteinG|waterL|runKm|email/i);
 });
+
+test("the day-by-day grid keeps small squares on day 1 (only one day of data)", async ({ page }) => {
+  await loginAs(page, "alice@e2e.test", "2026-11-01T06:00:00Z"); // every programme started on the 1st
+  await page.goto("/dashboard");
+  await hydrated(page);
+  const cells = page.getByRole("gridcell");
+  await expect(cells.first()).toBeVisible();
+  const box = (await cells.first().boundingBox())!;
+  expect(box.width).toBeLessThan(40);
+  expect(box.height).toBeLessThan(40);
+  await expect(page.getByText("Every member, today.")).toBeVisible();
+  await noHorizontalScroll(page);
+});

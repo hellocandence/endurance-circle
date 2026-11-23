@@ -13,11 +13,12 @@ const style: Record<DayState, string> = {
 const word: Record<DayState, string> = { done: "completed", missed: "missed", today: "in progress", future: "upcoming" };
 const fmt = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
 const first = (name: string) => name.split(/\s+/)[0];
+const COLS = 14; // always 14 columns, so a square keeps its size even when only a day or two exist
 
 /** Everyone, day by day for the last two weeks. Tap or hover a square to read it. */
 export function CircleHeatmap({ rows }: { rows: OverviewRow[] }) {
   const members = rows.filter((r) => r.recentCells.length > 0);
-  const dates = [...new Set(members.flatMap((r) => r.recentCells.map((c) => c.date)))].sort().slice(-14);
+  const dates = [...new Set(members.flatMap((r) => r.recentCells.map((c) => c.date)))].sort().slice(-COLS);
   const [sel, setSel] = useState<{ name: string; date: string; text: string } | null>(null);
   if (members.length === 0 || dates.length === 0) return null;
 
@@ -25,7 +26,7 @@ export function CircleHeatmap({ rows }: { rows: OverviewRow[] }) {
     <GlassCard className="flex flex-col gap-3 p-4">
       <div>
         <h2 className="text-lg font-semibold">Day by day</h2>
-        <p className="text-sm text-ink-muted">Every member, last {dates.length} days. Filled = a perfect day.</p>
+        <p className="text-sm text-ink-muted">Every member, {dates.length === 1 ? "today" : `last ${dates.length} days`}. Filled = a perfect day.</p>
       </div>
       <div>
         <div role="grid" aria-label="Members by day" className="flex flex-col gap-1">
@@ -34,6 +35,7 @@ export function CircleHeatmap({ rows }: { rows: OverviewRow[] }) {
             return (
               <div key={r.id} role="row" className="flex items-center gap-0.5">
                 <span role="rowheader" className="w-14 shrink-0 truncate pr-1 text-xs font-medium">{first(r.displayName)}</span>
+                {Array.from({ length: COLS - dates.length }, (_, i) => <span key={`pad-${i}`} aria-hidden="true" className="aspect-square min-w-0 flex-1" />)}
                 {dates.map((d) => {
                   const c = byDate.get(d);
                   const state: DayState = c?.state ?? "future";
