@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getDb } from "@/server/db";
 import { AVATAR_SIZE, FULL_SIZE, loadPhoto } from "@/server/media/photo";
+import { canViewMember } from "@/server/privacy/active";
 import { withAuth } from "@/server/rbac/guard";
 
 export const dynamic = "force-dynamic";
@@ -19,9 +20,10 @@ export const GET = withAuth(
         ? { kind: "photo", ownerId: params.userId }
         : { kind: "avatar", ownerId: params.userId },
   },
-  async (req, { params }) => {
+  async (req, { user, params }) => {
     const size = sizeSchema.safeParse(new URL(req.url).searchParams.get("size") ?? undefined);
     if (!size.success || !z.string().uuid().safeParse(params.userId).success) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    if (!(await canViewMember(getDb(), user, params.userId))) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
     const photo = await loadPhoto(getDb(), params.userId, size.data === "512" ? FULL_SIZE : AVATAR_SIZE);
     if (!photo) return NextResponse.json({ error: "not_found" }, { status: 404 });
