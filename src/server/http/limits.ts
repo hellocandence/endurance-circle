@@ -19,6 +19,7 @@ function build() {
     tokenIp: l(20), // verify-email / reset-password token guessing
     passwordUser: l(5), // wrong "current password" guesses while signed in, per member
     photoUser: l(10), // image processing is CPU heavy: 10 uploads per 15 min per member
+    ecTestUser: l(3), // test WhatsApp messages: 3 per 15 min per member
   };
 }
 

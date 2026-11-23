@@ -29,6 +29,13 @@
       "when": 1795195557157,
       "tag": "0003_minor_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795422336846,
+      "tag": "0004_lyrical_thunderball",
+      "breakpoints": true
     }
   ]
 }

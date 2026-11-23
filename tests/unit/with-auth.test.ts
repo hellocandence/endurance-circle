@@ -81,6 +81,7 @@ describe("withAuth", () => {
 const PUBLIC_ROUTES = [
   "api/auth/[...nextauth]/route.ts", // Auth.js itself
   "api/health/route.ts",
+  "api/ec/tick/route.ts", // shared-secret protected (EC_CRON_SECRET), called by the external cron
   "api/login/route.ts",
   "api/signup/route.ts",
   "api/invite/start/route.ts",

@@ -33,6 +33,12 @@ services:
         sync: false
       - key: EMAIL_FROM # e.g. Endurance Circle <you@gmail.com>; Gmail sends as the account that granted the token
         sync: false
+      - key: EC_CRON_SECRET # EC AI: >= 16 random chars. cron-job.org POSTs /api/ec/tick every 5 min with header x-cron-secret
+        sync: false
+      - key: MISA_URL # Misa AI base URL (the WhatsApp bot), e.g. https://<misa>.onrender.com
+        sync: false
+      - key: MISA_SECRET # Misa's CRON_SECRET
+        sync: false
       - key: AUTH_GOOGLE_ID # optional until Google sign-in is set up (T083)
         sync: false
       - key: AUTH_GOOGLE_SECRET

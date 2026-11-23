@@ -14,6 +14,8 @@ export type Resource =
   | { kind: "photo"; ownerId: string } // the full 512 px profile photo
   | { kind: "invite" }
   | { kind: "challenge" } // restart anyone's 75 Hard: owner only
+  | { kind: "ec_reminder"; ownerId: string } // a member's WhatsApp number and reminder times
+  | { kind: "ec_group" } // the owner's daily reminder to the whole WhatsApp group
   | { kind: "member"; memberId: string };
 
 export type Actor = { id: string; role: Role };
@@ -56,6 +58,15 @@ export function can(user: Actor | null | undefined, action: Action, r: Resource)
       return owner && (action === "invite" || action === "read" || action === "admin");
 
     case "challenge":
+      return owner && action === "admin";
+
+    case "ec_reminder": // the number is private: the member and the owner read it, only the member edits
+      if (action === "read") return owner || isSelf(r.ownerId);
+      if (action === "write") return isSelf(r.ownerId);
+      return false;
+
+    case "ec_group":
+      if (action === "read") return true; // every member sees when the group reminder goes out
       return owner && action === "admin";
 
     case "member":
