@@ -40,7 +40,7 @@ test("with no network, opening the app shows the shell and an offline message", 
   await page.goto("/dashboard"); // a page that was never visited, so only the fallback can answer
   await expect(page.getByRole("heading", { name: "You're offline" })).toBeVisible();
   await expect(page.getByRole("status")).toContainText("No connection");
-  await expect(page.getByText("Cadence", { exact: true })).toBeVisible(); // branded shell, styled (not a browser error page)
+  await expect(page.getByText("Endurance Circle", { exact: true })).toBeVisible(); // branded shell, styled (not a browser error page)
   await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 

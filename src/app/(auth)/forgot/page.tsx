@@ -1,7 +1,7 @@
 import { AuthShell } from "@/components/auth/AuthShell";
 import { ForgotForm } from "@/components/auth/ForgotForm";
 
-export const metadata = { title: "Forgot password · Cadence" };
+export const metadata = { title: "Forgot password · Endurance Circle" };
 
 export default function ForgotPage() {
   return (

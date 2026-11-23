@@ -46,33 +46,33 @@ export function InstallGuide() {
 
   const ios = (
     <Steps key="ios" title="iPhone and iPad" platform="ios" first={platform === "ios"}>
-      <li>Open Cadence in <strong>Safari</strong>. Other iPhone browsers can&apos;t install apps.</li>
+      <li>Open Endurance Circle in <strong>Safari</strong>. Other iPhone browsers can&apos;t install apps.</li>
       <li>Tap the <strong>Share</strong> button (the square with an arrow pointing up) in the toolbar.</li>
       <li>Scroll down and tap <strong>Add to Home Screen</strong>.</li>
-      <li>Tap <strong>Add</strong>. Cadence now opens from your home screen like any other app.</li>
-      <li>Open Cadence from your home screen and <strong>sign in once there</strong> (it is separate from Safari). You then stay signed in as long as you open it at least every few weeks.</li>
+      <li>Tap <strong>Add</strong>. Endurance Circle now opens from your home screen like any other app.</li>
+      <li>Open Endurance Circle from your home screen and <strong>sign in once there</strong> (it is separate from Safari). You then stay signed in as long as you open it at least every few weeks.</li>
     </Steps>
   );
   const android = (
     <Steps key="android" title="Android" platform="android" first={platform === "android"}>
-      <li>Open Cadence in <strong>Chrome</strong>.</li>
+      <li>Open Endurance Circle in <strong>Chrome</strong>.</li>
       <li>Tap <strong>Install app</strong> below, or open the Chrome menu (three dots) and choose <strong>Install app</strong> (sometimes called <strong>Add to Home screen</strong>).</li>
-      <li>Confirm. Cadence now opens from your home screen.</li>
+      <li>Confirm. Endurance Circle now opens from your home screen.</li>
       <li>Open it from your home screen and sign in if asked. You then stay signed in as long as you open it at least every few weeks.</li>
     </Steps>
   );
 
   return (
     <div className="flex flex-col gap-4">
-      {installed && <GlassCard role="status" className="bg-emerald-50/80 p-4 text-center font-semibold text-success">Cadence is installed on this device.</GlassCard>}
+      {installed && <GlassCard role="status" className="bg-emerald-50/80 p-4 text-center font-semibold text-success">Endurance Circle is installed on this device.</GlassCard>}
 
       {platform === "ios" && !iosSafari && !installed && (
-        <GlassCard role="alert" className="bg-amber-50/80 p-4 text-sm font-medium text-amber-900">This browser can&apos;t install Cadence on iPhone. Open this page in Safari to continue.</GlassCard>
+        <GlassCard role="alert" className="bg-amber-50/80 p-4 text-sm font-medium text-amber-900">This browser can&apos;t install Endurance Circle on iPhone. Open this page in Safari to continue.</GlassCard>
       )}
 
       {prompt && !installed && (
         <GlassCard className="flex flex-col gap-3 p-5">
-          <p className="font-semibold">Install Cadence on this device</p>
+          <p className="font-semibold">Install Endurance Circle on this device</p>
           <GlassButton onClick={install} className="w-full">Install app</GlassButton>
         </GlassCard>
       )}

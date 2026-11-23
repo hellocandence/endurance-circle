@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { buildRawMessage } from "@/server/email";
 import { alreadyRegisteredEmail, inviteEmail, passwordChangedEmail, resetEmail, verifyEmailMessage } from "@/server/email/templates";
 
-const URL = "https://cadence.example/invite/abc_DEF-123";
+const URL = "https://endurance-circle.example/invite/abc_DEF-123";
 const all = () => [
   inviteEmail({ inviterName: "Sandeep", email: "friend@example.com", url: URL }),
-  verifyEmailMessage({ url: "https://cadence.example/verify?token=t1" }),
-  resetEmail({ url: "https://cadence.example/reset?token=t2" }),
-  alreadyRegisteredEmail({ loginUrl: "https://cadence.example/login", forgotUrl: "https://cadence.example/forgot" }),
-  passwordChangedEmail({ forgotUrl: "https://cadence.example/forgot" }),
+  verifyEmailMessage({ url: "https://endurance-circle.example/verify?token=t1" }),
+  resetEmail({ url: "https://endurance-circle.example/reset?token=t2" }),
+  alreadyRegisteredEmail({ loginUrl: "https://endurance-circle.example/login", forgotUrl: "https://endurance-circle.example/forgot" }),
+  passwordChangedEmail({ forgotUrl: "https://endurance-circle.example/forgot" }),
 ];
 
 describe("email templates", () => {
@@ -28,7 +28,7 @@ describe("email templates", () => {
     expect(m.text).toContain(`Accept invite: ${URL}`);
     expect(m.text).toMatch(/friend@example\.com/);
     // the token still parses out of the text part, as the flows and tests expect
-    expect(resetEmail({ url: "https://cadence.example/reset?token=abc-123_x" }).text.match(/token=([\w-]+)/)![1]).toBe("abc-123_x");
+    expect(resetEmail({ url: "https://endurance-circle.example/reset?token=abc-123_x" }).text.match(/token=([\w-]+)/)![1]).toBe("abc-123_x");
   });
 
   it("escapes anything dynamic, so a hostile name cannot inject markup", () => {
@@ -49,8 +49,8 @@ describe("email templates", () => {
   });
 
   it("the security notice offers a way out", () => {
-    const m = passwordChangedEmail({ forgotUrl: "https://cadence.example/forgot" });
-    expect(m.html).toContain("https://cadence.example/forgot");
+    const m = passwordChangedEmail({ forgotUrl: "https://endurance-circle.example/forgot" });
+    expect(m.html).toContain("https://endurance-circle.example/forgot");
     expect(m.text).toMatch(/forgot/);
   });
 });
@@ -58,15 +58,15 @@ describe("email templates", () => {
 describe("buildRawMessage with HTML", () => {
   const decode = (raw: string) => Buffer.from(raw, "base64url").toString("utf8");
   const partBody = (msg: string, type: string) => {
-    const block = msg.split(/--cadence-[0-9a-f]+/).find((b) => b.includes(`Content-Type: ${type}`))!;
+    const block = msg.split(/--endurance-circle-[0-9a-f]+/).find((b) => b.includes(`Content-Type: ${type}`))!;
     const b64 = block.split("\r\n\r\n")[1].replace(/\s+/g, "");
     return Buffer.from(b64, "base64").toString("utf8");
   };
 
   it("sends multipart/alternative: plain text first, HTML last, both intact (including non-ASCII)", () => {
-    const m = resetEmail({ url: "https://cadence.example/reset?token=t2" });
-    const msg = decode(buildRawMessage("Cadence <a@gmail.com>", { to: "f@example.com", subject: "Sandeep ने invite किया", text: m.text, html: m.html }));
-    expect(msg).toMatch(/Content-Type: multipart\/alternative; boundary="cadence-[0-9a-f]+"/);
+    const m = resetEmail({ url: "https://endurance-circle.example/reset?token=t2" });
+    const msg = decode(buildRawMessage("Endurance Circle <a@gmail.com>", { to: "f@example.com", subject: "Sandeep ने invite किया", text: m.text, html: m.html }));
+    expect(msg).toMatch(/Content-Type: multipart\/alternative; boundary="endurance-circle-[0-9a-f]+"/);
     expect(msg.indexOf("text/plain")).toBeLessThan(msg.indexOf("text/html"));
     expect(partBody(msg, "text/plain")).toBe(m.text);
     expect(partBody(msg, "text/html")).toBe(m.html);

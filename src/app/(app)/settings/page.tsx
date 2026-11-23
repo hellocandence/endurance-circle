@@ -19,7 +19,7 @@ import { getProfile } from "@/server/profile/service";
 import { requestNow } from "@/server/clock";
 import { getProgramme } from "@/server/tracker/service";
 
-export const metadata = { title: "Settings · Cadence" };
+export const metadata = { title: "Settings · Endurance Circle" };
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
@@ -41,7 +41,7 @@ export default async function SettingsPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
       <ProfileForm profile={profile} />
-      <Link href="/install" className="glass glass-focus rounded-2xl p-4 text-center font-medium text-accent-strong">Install Cadence on your phone</Link>
+      <Link href="/install" className="glass glass-focus rounded-2xl p-4 text-center font-medium text-accent-strong">Install Endurance Circle on your phone</Link>
       <PhotoUploader userId={profile.id} avatarPhotoId={profile.avatarPhotoId} name={profile.name} />
       <ChallengeSection programme={programme} members={admin?.members ?? null} />
       <BodyLimitsForm body={body} />

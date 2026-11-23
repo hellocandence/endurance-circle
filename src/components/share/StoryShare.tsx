@@ -16,7 +16,7 @@ export function StoryShare({ data }: { data: StoryData }) {
   const [details, setDetails] = useState(true);
   const [canShare, setCanShare] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
-  const filename = `cadence-day-${data.dayNumber}.png`;
+  const filename = `endurance-circle-day-${data.dayNumber}.png`;
 
   const render = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -73,7 +73,7 @@ export function StoryShare({ data }: { data: StoryData }) {
     const blob = await makeBlob();
     if (!blob) return setMessage("Couldn't create the image. Please try again.");
     try {
-      await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: `Day ${data.dayNumber} on Cadence` });
+      await navigator.share({ files: [new File([blob], filename, { type: "image/png" })], title: `Day ${data.dayNumber} on Endurance Circle` });
       setMessage(null);
     } catch (err) {
       if ((err as Error).name !== "AbortError") setMessage("Sharing didn't work here. Use Download instead.");

@@ -153,7 +153,7 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
   ctx.arc(X + 30, 268, 26, Math.PI * 0.15, Math.PI * 1.85);
   ctx.stroke();
   ctx.restore();
-  text(ctx, "cadence", X + 78, 284, { size: 50, weight: 700, color: p.ink, font, spacing: -1 });
+  text(ctx, "endurance circle", X + 78, 284, { size: 50, weight: 700, color: p.ink, font, spacing: -1 });
   text(ctx, d.dateLabel, W - X, 282, { size: 34, weight: 500, color: p.muted, font, align: "right" });
 
   // --- hero: whose day, and which day
@@ -304,5 +304,5 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
   // --- footer
   const fy = hmY + hmH + 58;
   if (d.update) text(ctx, `“${d.update}”`, W / 2, fy, { size: 30, weight: 500, color: p.muted, font, align: "center", maxWidth: CW - 40 });
-  text(ctx, "cadence", W / 2, fy + (d.update ? 56 : 0), { size: 32, weight: 700, color: p.ink, font, align: "center", spacing: 1 });
+  text(ctx, "endurance circle", W / 2, fy + (d.update ? 56 : 0), { size: 32, weight: 700, color: p.ink, font, align: "center", spacing: 1 });
 }

@@ -1,4 +1,4 @@
-const BASE = "http://cadence.invalid";
+const BASE = "http://endurance-circle.invalid";
 
 /**
  * Only same-site relative paths may be used as a post-login destination (no open redirects).

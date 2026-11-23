@@ -1,7 +1,7 @@
 // Regenerates the app icons from one SVG: `node scripts/generate-icons.mjs`
 import sharp from "sharp";
 
-// A progress ring closing on a dot: "cadence" as a rhythm that completes. `inset` shrinks the mark so the
+// A progress ring closing on a dot: the circle closing on a dot, endurance that completes. `inset` shrinks the mark so the
 // maskable icon keeps it inside the 80% safe zone (platforms crop that icon to circles, squircles, ...).
 const svg = (inset = 0, rounded = true) => {
   const s = 512;

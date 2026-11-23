@@ -1,10 +1,10 @@
-# Render Blueprint for Cadence: one Node web service (UI + API). The database is Supabase Postgres (free plan never expires), set via DATABASE_URL.
+# Render Blueprint for Endurance Circle: one Node web service (UI + API). The database is Supabase Postgres (free plan never expires), set via DATABASE_URL.
 # Deploy: Render dashboard > New > Blueprint > pick this repo. Then fill in the variables marked "sync: false".
 # Steps, costs and the post-deploy checklist are in docs/03-ARCHITECTURE.md section 7.
 
 services:
   - type: web
-    name: cadence
+    name: endurance-circle
     runtime: node
     region: singapore # closest Render region to India; change if your friends are elsewhere
     plan: free # sleeps after ~15 min idle. Use "starter" for always-on (a keep-alive ping of /api/health also works)
@@ -21,7 +21,7 @@ services:
         sync: false
       - key: AUTH_SECRET
         generateValue: true # random, stays the same across deploys
-      - key: AUTH_URL # the public https URL, e.g. https://cadence.onrender.com. Set after the first deploy, then redeploy
+      - key: AUTH_URL # the public https URL, e.g. https://endurance-circle.onrender.com. Set after the first deploy, then redeploy
         sync: false
       - key: OWNER_EMAIL # becomes the OWNER on first boot
         sync: false
@@ -31,7 +31,7 @@ services:
         sync: false
       - key: GMAIL_REFRESH_TOKEN # from `pnpm gmail:token`
         sync: false
-      - key: EMAIL_FROM # e.g. Cadence <you@gmail.com>; Gmail sends as the account that granted the token
+      - key: EMAIL_FROM # e.g. Endurance Circle <you@gmail.com>; Gmail sends as the account that granted the token
         sync: false
       - key: AUTH_GOOGLE_ID # optional until Google sign-in is set up (T083)
         sync: false

@@ -22,7 +22,7 @@ export default function UiPreview() {
     <main className="mx-auto flex max-w-2xl flex-col gap-6 px-4 pb-32 pt-8 md:pl-32">
       <header>
         <h1 className="text-3xl font-semibold tracking-tight">UI preview</h1>
-        <p className="mt-1 text-ink-muted">Cadence glass design system.</p>
+        <p className="mt-1 text-ink-muted">Endurance Circle glass design system.</p>
       </header>
 
       <section aria-labelledby="cards" className="flex flex-col gap-3">

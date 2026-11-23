@@ -92,7 +92,7 @@ describe("disabled users", () => {
 
 describe("sessionCookie", () => {
   it("uses the __Secure- prefix for https", () => {
-    expect(sessionCookie({ AUTH_URL: "https://cadence.onrender.com" })).toEqual({
+    expect(sessionCookie({ AUTH_URL: "https://endurance-circle.onrender.com" })).toEqual({
       name: "__Secure-authjs.session-token",
       secure: true,
     });

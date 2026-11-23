@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 export type LimitResult = { allowed: true } | { allowed: false; retryAfterSec: number };
 
 /**
- * Sliding-window limiter, in memory. Fine for the single Render instance Cadence runs on; counters
+ * Sliding-window limiter, in memory. Fine for the single Render instance Endurance Circle runs on; counters
  * reset on restart. Move to Postgres if the app ever runs on more than one instance.
  */
 export function createRateLimiter(opts: { limit: number; windowMs: number }) {

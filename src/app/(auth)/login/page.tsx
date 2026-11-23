@@ -5,7 +5,7 @@ import { safeNext } from "@/lib/safe-next";
 import { auth } from "@/server/auth";
 import { googleEnabled } from "@/server/auth/google-enabled";
 
-export const metadata = { title: "Sign in · Cadence" };
+export const metadata = { title: "Sign in · Endurance Circle" };
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; error?: string }> }) {
   const { next, error } = await searchParams;

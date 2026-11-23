@@ -37,9 +37,9 @@ test("sign-up and invite-start refuse bad invites", async ({ request }) => {
 });
 
 test("the OAuth callback always expires the parked invite cookie", async ({ request }) => {
-  const res = await request.get("/api/auth/callback/google", { headers: { cookie: "cadence_invite=abc" }, maxRedirects: 0 });
+  const res = await request.get("/api/auth/callback/google", { headers: { cookie: "endurance_circle_invite=abc" }, maxRedirects: 0 });
   const setCookie = res.headersArray().filter((h) => h.name.toLowerCase() === "set-cookie").map((h) => h.value).join("\n");
-  expect(setCookie).toMatch(/cadence_invite=;/);
+  expect(setCookie).toMatch(/endurance_circle_invite=;/);
   expect(setCookie.toLowerCase()).toMatch(/max-age=0/);
 });
 

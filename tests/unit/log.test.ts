@@ -25,7 +25,7 @@ describe("redact", () => {
   });
 
   it("scrubs credentials inside connection strings and bearer tokens in free text", () => {
-    expect(redact("connect to postgres://cadence:s3cr3t@db.render.com/cadence failed")).toBe("connect to postgres://[redacted]@db.render.com/cadence failed");
+    expect(redact("connect to postgres://endurance_circle:s3cr3t@db.render.com/endurance_circle failed")).toBe("connect to postgres://[redacted]@db.render.com/endurance_circle failed");
     expect(redact("sent Authorization: Bearer abc123.def")).toBe("sent Authorization: Bearer [redacted]");
   });
 

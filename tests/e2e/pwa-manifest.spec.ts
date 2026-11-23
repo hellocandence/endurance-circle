@@ -15,7 +15,7 @@ test("the web manifest meets the installability criteria", async ({ request, pag
   expect(res.headers()["content-type"]).toMatch(/manifest\+json|application\/json/);
   const m = await res.json();
 
-  expect(m).toMatchObject({ name: "Cadence", short_name: "Cadence", start_url: "/dashboard", scope: "/", display: "standalone", theme_color: "#4f46e5" });
+  expect(m).toMatchObject({ name: "Endurance Circle", short_name: "Endurance", start_url: "/dashboard", scope: "/", display: "standalone", theme_color: "#4f46e5" });
   expect(m.background_color).toMatch(/^#[0-9a-f]{6}$/i);
   expect(m.short_name.length).toBeLessThanOrEqual(12);
 
@@ -42,7 +42,7 @@ test("pages carry the theme colour, apple touch icon and standalone hints", asyn
   await expect(page.locator('meta[name="viewport"]')).toHaveAttribute("content", /viewport-fit=cover/);
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute("href", "/icons/apple-touch-icon.png");
   await expect(page.locator('meta[name="mobile-web-app-capable"], meta[name="apple-mobile-web-app-capable"]').first()).toHaveAttribute("content", "yes");
-  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute("content", "Cadence");
+  await expect(page.locator('meta[name="apple-mobile-web-app-title"]')).toHaveAttribute("content", "Endurance Circle");
   const apple = await request.get("/icons/apple-touch-icon.png");
   expect(await sharp(await apple.body()).metadata()).toMatchObject({ width: 180, height: 180 });
   const favicon = await page.locator('link[rel="icon"]').first().getAttribute("href");

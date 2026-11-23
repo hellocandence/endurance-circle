@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("home page shows the Cadence name", async ({ page }) => {
+test("home page shows the Endurance Circle name", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Cadence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Endurance Circle" })).toBeVisible();
 });
 
 test("home page links signed-out visitors to the sign-in page", async ({ page }) => {

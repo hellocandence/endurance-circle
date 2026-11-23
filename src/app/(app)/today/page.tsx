@@ -9,7 +9,7 @@ import { getDb } from "@/server/db";
 import { trackerPayload } from "@/server/tracker/respond";
 import { cohortOpen, getProgramme, getToday } from "@/server/tracker/service";
 
-export const metadata = { title: "Today · Cadence" };
+export const metadata = { title: "Today · Endurance Circle" };
 export const dynamic = "force-dynamic";
 
 export default async function TodayPage() {

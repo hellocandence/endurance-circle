@@ -75,7 +75,7 @@ test("forgot password gives a generic confirmation", async ({ page }) => {
   await noHorizontalScroll(page);
   await page.getByLabel("Email").fill("anyone@example.com");
   await page.getByRole("button", { name: "Send reset link" }).click();
-  await expect(page.getByRole("status")).toContainText("If that email has a Cadence account");
+  await expect(page.getByRole("status")).toContainText("If that email has a Endurance Circle account");
 });
 
 test.describe("reset password", () => {
@@ -141,9 +141,9 @@ test.describe("invites", () => {
     await noHorizontalScroll(page);
   });
 
-  test("/signup explains that Cadence is invite-only", async ({ page }) => {
+  test("/signup explains that Endurance Circle is invite-only", async ({ page }) => {
     await page.goto("/signup");
-    await expect(page.getByRole("heading", { name: "Cadence is invite-only" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Endurance Circle is invite-only" })).toBeVisible();
   });
 });
 

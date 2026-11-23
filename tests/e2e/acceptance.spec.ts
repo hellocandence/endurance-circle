@@ -120,7 +120,7 @@ test("AT-07: an expired invite token → rejected", async ({ browser, request })
   const token = url.split("/invite/")[1];
   const eightDaysOn = new Date(Date.now() + 8 * 86_400_000).toISOString();
   expect(new Date(expiresAt).getTime()).toBeLessThan(new Date(eightDaysOn).getTime());
-  const late = await request.post("/api/signup", { data: { token, email: `at07-${rand()}@e2e.test`, password: "long-enough-password", name: "AT07" }, headers: { ...fakeIp(), "x-cadence-test-now": eightDaysOn } });
+  const late = await request.post("/api/signup", { data: { token, email: `at07-${rand()}@e2e.test`, password: "long-enough-password", name: "AT07" }, headers: { ...fakeIp(), "x-endurance-circle-test-now": eightDaysOn } });
   expect(late.status()).toBe(400);
   expect((await late.json()).error).toBe("invalid_invite");
   // the same invite still works inside its 7 days: it was the expiry that rejected it

@@ -73,7 +73,7 @@ export function buildRawMessage(from: string, { to, subject, text, html }: Email
   const head = [`From: ${oneLine(from)}`, `To: ${oneLine(to)}`, `Subject: ${encodeHeader(oneLine(subject))}`, "MIME-Version: 1.0"];
   let message: string;
   if (html) {
-    const boundary = `cadence-${randomBytes(12).toString("hex")}`;
+    const boundary = `endurance-circle-${randomBytes(12).toString("hex")}`;
     const part = (type: string, content: string) =>
       [`--${boundary}`, `Content-Type: ${type}; charset=UTF-8`, "Content-Transfer-Encoding: base64", "", wrap76(base64(content))].join("\r\n");
     message = [...head, `Content-Type: multipart/alternative; boundary="${boundary}"`, "", part("text/plain", text), part("text/html", html), `--${boundary}--`, ""].join("\r\n");

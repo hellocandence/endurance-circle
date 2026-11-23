@@ -3,8 +3,8 @@ import { buildRawMessage, getMailer, parseSender } from "@/server/email";
 
 describe("parseSender", () => {
   it("splits name and address", () => {
-    expect(parseSender("Cadence <hello@example.com>")).toEqual({ name: "Cadence", email: "hello@example.com" });
-    expect(parseSender('"Cadence App" <hello@example.com>')).toEqual({ name: "Cadence App", email: "hello@example.com" });
+    expect(parseSender("Endurance Circle <hello@example.com>")).toEqual({ name: "Endurance Circle", email: "hello@example.com" });
+    expect(parseSender('"Endurance Circle App" <hello@example.com>')).toEqual({ name: "Endurance Circle App", email: "hello@example.com" });
   });
   it("accepts a bare address", () => {
     expect(parseSender("hello@example.com")).toEqual({ email: "hello@example.com" });
@@ -40,8 +40,8 @@ describe("Gmail API mailer", () => {
   });
 
   it("builds a base64 plain-text message with encoded non-ASCII subjects", () => {
-    const msg = decode(buildRawMessage("Cadence <a@gmail.com>", { to: "f@example.com", subject: "Sandeep invited you — welcome", text: "Hello दोस्त\nline two" }));
-    expect(msg).toContain("From: Cadence <a@gmail.com>");
+    const msg = decode(buildRawMessage("Endurance Circle <a@gmail.com>", { to: "f@example.com", subject: "Sandeep invited you — welcome", text: "Hello दोस्त\nline two" }));
+    expect(msg).toContain("From: Endurance Circle <a@gmail.com>");
     expect(msg).toContain("To: f@example.com");
     expect(msg).toMatch(/Subject: =\?UTF-8\?B\?.+\?=/);
     const body = msg.split("\r\n\r\n")[1].replace(/\r\n/g, "");
@@ -73,7 +73,7 @@ describe("Gmail API mailer", () => {
 describe("contactEmail", () => {
   it("is the address the app sends from, and nothing when none is set", async () => {
     const { contactEmail } = await import("@/server/email/contact");
-    expect(contactEmail({ EMAIL_FROM: "Cadence <hello@example.com>" })).toBe("hello@example.com");
+    expect(contactEmail({ EMAIL_FROM: "Endurance Circle <hello@example.com>" })).toBe("hello@example.com");
     expect(contactEmail({ EMAIL_FROM: "plain@example.com" })).toBe("plain@example.com");
     expect(contactEmail({ EMAIL_FROM: "not an address" })).toBeNull();
     expect(contactEmail({})).toBeNull();

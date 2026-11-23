@@ -8,7 +8,7 @@ import { getProgressOverview } from "@/server/dashboard/analytics";
 import { sessionActor } from "@/server/auth/session-user";
 import { getDb } from "@/server/db";
 
-export const metadata = { title: "Progress · Cadence" };
+export const metadata = { title: "Progress · Endurance Circle" };
 export const dynamic = "force-dynamic";
 
 export default async function ProgressPage() {

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { rejectUnsafeRequest } from "@/server/http/guards";
 
-const env = { AUTH_URL: "https://cadence.example.com" };
+const env = { AUTH_URL: "https://endurance-circle.example.com" };
 const req = (headers: Record<string, string>) =>
-  new Request("https://cadence.example.com/api/login", { method: "POST", headers, body: "{}" });
+  new Request("https://endurance-circle.example.com/api/login", { method: "POST", headers, body: "{}" });
 const status = (r: ReturnType<typeof rejectUnsafeRequest>) => r?.status ?? null;
 
 describe("rejectUnsafeRequest", () => {
@@ -22,6 +22,6 @@ describe("rejectUnsafeRequest", () => {
   it("rejects cross-site requests", () => {
     expect(status(rejectUnsafeRequest(req({ "content-type": "application/json", origin: "https://evil.example" }), env))).toBe(403);
     expect(status(rejectUnsafeRequest(req({ "content-type": "application/json", "sec-fetch-site": "cross-site" }), env))).toBe(403);
-    expect(status(rejectUnsafeRequest(req({ "content-type": "application/json", origin: "https://cadence.example.com.evil.example" }), env))).toBe(403);
+    expect(status(rejectUnsafeRequest(req({ "content-type": "application/json", origin: "https://endurance-circle.example.com.evil.example" }), env))).toBe(403);
   });
 });

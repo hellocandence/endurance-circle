@@ -73,7 +73,7 @@ function layout(o: Layout): Rendered {
 <tr><td align="center" style="padding:32px 16px;font-family:${FONT};">
   <table role="presentation" width="560" cellpadding="0" cellspacing="0" class="container" style="width:560px;max-width:100%;">
     <tr><td style="padding:0 6px 18px;font-family:${FONT};">
-      <span style="display:inline-block;width:14px;height:14px;border:4px solid ${C.accent};border-right-color:transparent;border-radius:50%;vertical-align:-4px;margin-right:10px;"></span><span style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${C.accent};">cadence</span>
+      <span style="display:inline-block;width:14px;height:14px;border:4px solid ${C.accent};border-right-color:transparent;border-radius:50%;vertical-align:-4px;margin-right:10px;"></span><span style="font-size:24px;font-weight:700;letter-spacing:-0.5px;color:${C.accent};">Endurance Circle</span>
     </td></tr>
     <tr><td class="card" style="background:${C.card};border:1px solid ${C.line};border-radius:24px;overflow:hidden;">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -89,7 +89,7 @@ function layout(o: Layout): Rendered {
     </td></tr>
     <tr><td class="px" style="padding:22px 12px 0;font-family:${FONT};">
       <p class="muted" style="margin:0 0 4px;font-size:12px;line-height:1.6;color:${C.muted};">${esc(o.footer)}</p>
-      <p class="muted" style="margin:0;font-size:12px;line-height:1.6;color:${C.muted};">Cadence &middot; a private circle for building daily habits together.</p>
+      <p class="muted" style="margin:0;font-size:12px;line-height:1.6;color:${C.muted};">Endurance Circle &middot; a private circle for building daily habits together.</p>
     </td></tr>
   </table>
 </td></tr>
@@ -106,7 +106,7 @@ function layout(o: Layout): Rendered {
     ...(o.notes ?? []).map((n) => n),
     "",
     o.footer,
-    "Cadence - a private circle for building daily habits together.",
+    "Endurance Circle - a private circle for building daily habits together.",
   ].join("\n");
 
   return { subject: o.subject, text, html };
@@ -114,34 +114,34 @@ function layout(o: Layout): Rendered {
 
 export function inviteEmail(p: { inviterName: string; email: string; url: string }): Rendered {
   return layout({
-    subject: `${p.inviterName} invited you to Cadence`,
+    subject: `${p.inviterName} invited you to Endurance Circle`,
     preheader: `${p.inviterName} invited you to join their circle.`,
     heading: "You're invited",
-    paragraphs: [`${p.inviterName} invited you to join their circle on Cadence, a private space to build daily habits together.`, "Tap the button to create your account. You can sign up with a password or with Google."],
+    paragraphs: [`${p.inviterName} invited you to join their circle on Endurance Circle, a private space to build daily habits together.`, "Tap the button to create your account. You can sign up with a password or with Google."],
     button: { label: "Accept invite", url: p.url },
     notes: [`This link works only for ${p.email}, once, and expires in 7 days.`],
-    footer: `You got this because ${p.inviterName} entered your email address on Cadence.`,
+    footer: `You got this because ${p.inviterName} entered your email address on Endurance Circle.`,
   });
 }
 
 export function verifyEmailMessage(p: { url: string }): Rendered {
   return layout({
-    subject: "Verify your Cadence email",
-    preheader: "Confirm your email to finish setting up Cadence.",
+    subject: "Verify your Endurance Circle email",
+    preheader: "Confirm your email to finish setting up Endurance Circle.",
     heading: "Confirm your email",
-    paragraphs: ["Welcome to Cadence. Confirm your email address to finish setting up your account."],
+    paragraphs: ["Welcome to Endurance Circle. Confirm your email address to finish setting up your account."],
     button: { label: "Confirm email", url: p.url },
     notes: ["This link works once and expires in 24 hours."],
-    footer: "You got this because someone signed up to Cadence with this address.",
+    footer: "You got this because someone signed up to Endurance Circle with this address.",
   });
 }
 
 export function resetEmail(p: { url: string }): Rendered {
   return layout({
-    subject: "Reset your Cadence password",
-    preheader: "Choose a new password for your Cadence account.",
+    subject: "Reset your Endurance Circle password",
+    preheader: "Choose a new password for your Endurance Circle account.",
     heading: "Reset your password",
-    paragraphs: ["We got a request to reset the password for your Cadence account. Tap the button to choose a new one."],
+    paragraphs: ["We got a request to reset the password for your Endurance Circle account. Tap the button to choose a new one."],
     button: { label: "Choose a new password", url: p.url },
     notes: ["This link works once and expires in 30 minutes.", "If you did not ask for this, ignore this email. Your password stays the same."],
     footer: "You got this because a password reset was requested for this address.",
@@ -150,10 +150,10 @@ export function resetEmail(p: { url: string }): Rendered {
 
 export function alreadyRegisteredEmail(p: { loginUrl: string; forgotUrl: string }): Rendered {
   return layout({
-    subject: "You already have a Cadence account",
+    subject: "You already have a Endurance Circle account",
     preheader: "This email already has an account. Sign in or reset your password.",
     heading: "You already have an account",
-    paragraphs: ["Someone used an invite to sign up with this email, but it already has a Cadence account.", "You can just sign in."],
+    paragraphs: ["Someone used an invite to sign up with this email, but it already has a Endurance Circle account.", "You can just sign in."],
     button: { label: "Sign in", url: p.loginUrl },
     secondary: { label: "Forgot your password?", url: p.forgotUrl },
     notes: ["If this was not you, you can ignore this email."],
@@ -163,11 +163,11 @@ export function alreadyRegisteredEmail(p: { loginUrl: string; forgotUrl: string 
 
 export function passwordChangedEmail(p: { forgotUrl: string }): Rendered {
   return layout({
-    subject: "Your Cadence password was changed",
+    subject: "Your Endurance Circle password was changed",
     preheader: "Your password was just changed and your other devices were signed out.",
     heading: "Your password was changed",
-    paragraphs: ["Your Cadence password was just changed, and your other devices were signed out.", "If this was you, there is nothing to do."],
+    paragraphs: ["Your Endurance Circle password was just changed, and your other devices were signed out.", "If this was you, there is nothing to do."],
     button: { label: "This wasn't me: reset password", url: p.forgotUrl },
-    footer: "You got this security notice because the password on your Cadence account changed.",
+    footer: "You got this security notice because the password on your Endurance Circle account changed.",
   });
 }

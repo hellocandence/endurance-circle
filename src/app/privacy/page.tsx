@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { contactEmail } from "@/server/email/contact";
 
-export const metadata = { title: "Privacy · Cadence" };
+export const metadata = { title: "Privacy · Endurance Circle" };
 
 export default function PrivacyPage() {
   const email = contactEmail();
   return (
     <main className="mx-auto flex min-h-dvh max-w-2xl flex-col gap-4 p-6">
       <h1 className="text-3xl font-semibold tracking-tight">Privacy</h1>
-      <p className="text-neutral-600">Cadence is a private, invite-only app for a small circle of friends. This page says what it keeps and why.</p>
+      <p className="text-neutral-600">Endurance Circle is a private, invite-only app for a small circle of friends. This page says what it keeps and why.</p>
 
       <h2 className="mt-2 text-xl font-semibold">What we store</h2>
       <ul className="list-disc space-y-1 pl-5 text-neutral-700">
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
       <h2 className="mt-2 text-xl font-semibold">Your choices</h2>
       <p className="text-neutral-700">You can edit your details in Settings. To delete your account and data, ask the owner{email ? <> at <a className="text-accent-strong underline" href={`mailto:${email}`}>{email}</a></> : null}.</p>
 
-      <Link href="/" className="text-accent-strong underline">Back to Cadence</Link>
+      <Link href="/" className="text-accent-strong underline">Back to Endurance Circle</Link>
     </main>
   );
 }

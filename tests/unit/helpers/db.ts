@@ -34,7 +34,7 @@ async function makePglite(): Promise<TestDb> {
 }
 
 async function makeRealDb(adminUrl: string): Promise<TestDb> {
-  const name = `cadence_test_${randomBytes(6).toString("hex")}`;
+  const name = `endurance_circle_test_${randomBytes(6).toString("hex")}`;
   const admin = new Pool({ connectionString: adminUrl, max: 1 });
   admin.on("error", () => {});
   await admin.query(`CREATE DATABASE ${name}`);

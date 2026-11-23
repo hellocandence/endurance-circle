@@ -7,7 +7,7 @@ import { getDb } from "@/server/db";
 import { privateJourney } from "@/server/privacy";
 import { getJourneyRows } from "@/server/tracker/journey";
 
-export const metadata = { title: "Circle · Cadence" };
+export const metadata = { title: "Circle · Endurance Circle" };
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {

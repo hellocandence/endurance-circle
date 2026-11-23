@@ -8,7 +8,7 @@ const ANDROID_CHROME = "Mozilla/5.0 (Linux; Android 14; Pixel 7) AppleWebKit/537
 test("the install guide is public and explains both platforms (375px)", async ({ page }) => {
   await page.goto("/install");
   expect(page.viewportSize()!.width).toBe(375);
-  await expect(page.getByRole("heading", { name: "Add Cadence to your phone" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Add Endurance Circle to your phone" })).toBeVisible();
   const ios = page.getByRole("region", { name: "iPhone and iPad" });
   await expect(ios).toContainText("Share");
   await expect(ios).toContainText("Add to Home Screen");
@@ -62,6 +62,6 @@ test("on Android the browser's install prompt becomes an Install button", async 
 
 test("the guide is linked from the login page", async ({ page }) => {
   await page.goto("/login");
-  await page.getByRole("link", { name: "Add Cadence to your phone" }).click();
+  await page.getByRole("link", { name: "Add Endurance Circle to your phone" }).click();
   await page.waitForURL("**/install");
 });

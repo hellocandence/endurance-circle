@@ -18,12 +18,12 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: cadence
-          POSTGRES_PASSWORD: cadence
-          POSTGRES_DB: cadence_e2e
+          POSTGRES_USER: endurance_circle
+          POSTGRES_PASSWORD: endurance_circle
+          POSTGRES_DB: endurance_circle_e2e
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U cadence"
+          --health-cmd "pg_isready -U endurance_circle"
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
@@ -32,8 +32,8 @@ jobs:
       AUTH_SECRET: ci-only-secret-not-used-anywhere-else
       AUTH_URL: http://localhost:3000
       OWNER_EMAIL: owner@example.com
-      TEST_DATABASE_URL: postgres://cadence:cadence@localhost:5432/postgres
-      E2E_DATABASE_URL: postgres://cadence:cadence@localhost:5432/cadence_e2e
+      TEST_DATABASE_URL: postgres://endurance_circle:endurance_circle@localhost:5432/postgres
+      E2E_DATABASE_URL: postgres://endurance_circle:endurance_circle@localhost:5432/endurance_circle_e2e
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4 # version comes from "packageManager" in package.json
@@ -52,7 +52,7 @@ jobs:
       - name: Unit tests (real Postgres 16 + pgvector)
         run: pnpm test
         env:
-          TEST_DATABASE_URL: postgres://cadence:cadence@localhost:5432/postgres
+          TEST_DATABASE_URL: postgres://endurance_circle:endurance_circle@localhost:5432/postgres
 
       - name: Install browsers
         run: pnpm exec playwright install --with-deps chromium

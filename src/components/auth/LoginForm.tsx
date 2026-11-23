@@ -44,7 +44,7 @@ export function LoginForm({ next, authError, googleEnabled }: { next?: string; a
     } else if (res.status === 429) {
       setError("Too many attempts. Please wait a few minutes and try again.");
     } else if (res.status === 0) {
-      setError("Can't reach Cadence. Check your connection and try again.");
+      setError("Can't reach Endurance Circle. Check your connection and try again.");
     } else {
       setError("Incorrect email or password.");
     }
@@ -80,7 +80,7 @@ export function LoginForm({ next, authError, googleEnabled }: { next?: string; a
           Forgot your password?
         </Link>
         <Link href="/install" className="glass-focus rounded-full text-center text-sm font-medium text-ink-muted underline-offset-4 hover:underline">
-          Add Cadence to your phone
+          Add Endurance Circle to your phone
         </Link>
       </form>
     </>

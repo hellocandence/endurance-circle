@@ -17,7 +17,7 @@ export async function verifyPassword(hash: string, password: string): Promise<bo
 let dummyHash: Promise<string> | undefined;
 /** Burn the same CPU as a real check so unknown emails are not distinguishable by timing. */
 export async function dummyVerify(password: string): Promise<false> {
-  dummyHash ??= hashPassword("cadence-dummy-password");
+  dummyHash ??= hashPassword("endurance-circle-dummy-password");
   await verifyPassword(await dummyHash, password);
   return false;
 }

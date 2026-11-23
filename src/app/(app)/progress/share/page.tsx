@@ -11,7 +11,7 @@ import { TASK_LABELS } from "@/server/tracker/rules";
 import { trackerPayload } from "@/server/tracker/respond";
 import { getToday } from "@/server/tracker/service";
 
-export const metadata = { title: "Share your day · Cadence" };
+export const metadata = { title: "Share your day · Endurance Circle" };
 export const dynamic = "force-dynamic";
 
 const dateFmt = new Intl.DateTimeFormat("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });

@@ -25,7 +25,7 @@ export function ForgotForm() {
   if (done) {
     return (
       <>
-        <FormMessage kind="success">If that email has a Cadence account, a reset link is on its way. It works once and expires in 30 minutes.</FormMessage>
+        <FormMessage kind="success">If that email has a Endurance Circle account, a reset link is on its way. It works once and expires in 30 minutes.</FormMessage>
         <Link href="/login" className="glass-focus rounded-full text-center text-sm font-medium text-accent-strong hover:underline">
           Back to sign in
         </Link>

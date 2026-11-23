@@ -3,7 +3,7 @@ import type { DayPatch } from "@/server/tracker/schema";
 // Unsent Today edits kept on the device until the server accepts them (see useDaySaver).
 // Keys include the user id so one account's edits are never replayed into another's on a shared phone,
 // and private notes are never written to storage (they stay in memory for the open tab only).
-const PREFIX = "cadence:pending:";
+const PREFIX = "endurance-circle:pending:";
 const key = (userId: string, date: string) => `${PREFIX}${userId}:${date}`;
 const withoutPrivate = (patch: DayPatch): DayPatch => {
   const rest = { ...patch };

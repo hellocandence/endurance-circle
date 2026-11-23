@@ -5,7 +5,7 @@ import { googleEnabled } from "@/server/auth/google-enabled";
 import { getUsableInvite } from "@/server/auth/invites";
 import { getDb } from "@/server/db";
 
-export const metadata = { title: "Join the circle · Cadence", referrer: "no-referrer" };
+export const metadata = { title: "Join the circle · Endurance Circle", referrer: "no-referrer" };
 export const dynamic = "force-dynamic";
 
 export default async function InvitePage({ params }: { params: Promise<{ token: string }> }) {
@@ -22,7 +22,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     );
   }
   return (
-    <AuthShell title="Join the circle" subtitle="You've been invited to Cadence.">
+    <AuthShell title="Join the circle" subtitle="You've been invited to Endurance Circle.">
       <SignUpForm token={token} lockedEmail={invite.email} googleEnabled={googleEnabled()} />
     </AuthShell>
   );

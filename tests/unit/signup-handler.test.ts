@@ -63,9 +63,9 @@ describe("handleSignUp: no email enumeration", () => {
 describe("invite cookie middleware", () => {
   const callback = "http://localhost:3000/api/auth/callback/google";
   it("expires the invite cookie when the OAuth callback is hit", () => {
-    const res = middleware(new NextRequest(callback, { headers: { cookie: "cadence_invite=abc" } }));
+    const res = middleware(new NextRequest(callback, { headers: { cookie: "endurance_circle_invite=abc" } }));
     const set = res.headers.get("set-cookie") ?? "";
-    expect(set).toContain("cadence_invite=;");
+    expect(set).toContain("endurance_circle_invite=;");
     expect(set.toLowerCase()).toContain("max-age=0");
   });
   it("does nothing when there is no invite cookie", () => {

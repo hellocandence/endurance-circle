@@ -15,11 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cadence",
+  title: "Endurance Circle",
   description: "A private circle for building daily habits together.",
-  applicationName: "Cadence",
+  applicationName: "Endurance Circle",
   icons: { icon: [{ url: "/icon.png", type: "image/png", sizes: "64x64" }], apple: "/icons/apple-touch-icon.png" },
-  appleWebApp: { capable: true, title: "Cadence", statusBarStyle: "default" },
+  appleWebApp: { capable: true, title: "Endurance Circle", statusBarStyle: "default" },
   formatDetection: { telephone: false },
 };
 

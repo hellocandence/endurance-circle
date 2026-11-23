@@ -11,7 +11,7 @@ import { sessionActor } from "@/server/auth/session-user";
 import { getDb } from "@/server/db";
 import { can } from "@/server/rbac/can";
 
-export const metadata = { title: "Progress · Cadence" };
+export const metadata = { title: "Progress · Endurance Circle" };
 export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

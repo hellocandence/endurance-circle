@@ -22,7 +22,7 @@ export function OfflineActions() {
         {online ? "You're back online." : "No connection right now."}
       </p>
       <GlassButton onClick={() => (window.location.href = "/dashboard")} className="w-full">
-        {online ? "Open Cadence" : "Try again"}
+        {online ? "Open Endurance Circle" : "Try again"}
       </GlassButton>
     </>
   );

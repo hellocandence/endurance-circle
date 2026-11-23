@@ -3,7 +3,7 @@ import { createRateLimiter, type RateLimiter } from "./rate-limit";
 const MIN15 = 15 * 60 * 1000;
 
 // One set of limiters per server process (survives dev hot reloads).
-const g = globalThis as unknown as { __cadenceLimits?: ReturnType<typeof build> };
+const g = globalThis as unknown as { __enduranceCircleLimits?: ReturnType<typeof build> };
 
 function build() {
   const l = (limit: number): RateLimiter => createRateLimiter({ limit, windowMs: MIN15 });
@@ -22,4 +22,4 @@ function build() {
   };
 }
 
-export const limits = (g.__cadenceLimits ??= build());
+export const limits = (g.__enduranceCircleLimits ??= build());
