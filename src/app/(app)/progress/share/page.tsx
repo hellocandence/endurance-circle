@@ -47,6 +47,7 @@ export default async function SharePage() {
     tasks: body.evaluation.required.map((k) => ({ label: TASK_LABELS[k], done: body.evaluation.done.includes(k) })),
     streak: analytics.stats.streak,
     completionPct: analytics.stats.completionPct,
+    last7Pct: analytics.stats.last7Pct,
     cells: analytics.cells.map((c) => c.state),
     details: { runKm: Number(log?.runKm ?? 0), waterL: Number(log?.waterL ?? 0), studyMin: log?.studyMin ?? 0, readingMin: log?.readingMin ?? 0 },
     update: log?.updateText ?? null,

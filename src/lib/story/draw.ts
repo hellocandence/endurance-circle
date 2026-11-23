@@ -18,7 +18,8 @@ export type StoryData = {
   required: number;
   tasks: { label: string; done: boolean }[];
   streak: number;
-  completionPct: number;
+  completionPct: number; // overall
+  last7Pct: number;
   cells: CellState[];
   /** The member's own amounts for the day. Shown only when they choose to include them. */
   details: { runKm: number; waterL: number; studyMin: number; readingMin: number } | null;
@@ -121,12 +122,42 @@ function text(ctx: Ctx, s: string, x: number, y: number, o: { size: number; weig
 
 const fmtDuration = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${String(min % 60).padStart(2, "0")}m` : `${min} min`);
 
+/** Small caps section label. Every label on the story uses this one style. */
+function label(ctx: Ctx, p: Palette, font: string, s: string, x: number, y: number, align: CanvasTextAlign = "left") {
+  text(ctx, s.toUpperCase(), x, y, { size: 22, weight: 700, color: p.muted, font, spacing: 4, align });
+}
+
+function gradientFill(ctx: Ctx, p: Palette, x0: number, y0: number, x1: number, y1: number) {
+  const g = ctx.createLinearGradient(x0, y0, x1, y1);
+  g.addColorStop(0, p.accent);
+  g.addColorStop(1, p.accent2);
+  return g;
+}
+
+/** A rounded progress track with a gradient fill (0 to 1). */
+function bar(ctx: Ctx, p: Palette, x: number, y: number, w: number, h: number, ratio: number) {
+  rr(ctx, x, y, w, h, h / 2);
+  ctx.fillStyle = p.track;
+  ctx.fill();
+  if (ratio > 0) {
+    rr(ctx, x, y, Math.max(h, w * Math.min(1, ratio)), h, h / 2);
+    ctx.fillStyle = gradientFill(ctx, p, x, 0, x + w, 0);
+    ctx.fill();
+  }
+}
+
+/**
+ * Layout (all on one 72 px margin, one 28 px gap between blocks, inside Instagram's safe area):
+ *   brand row . hero (name, day, journey bar) . three equal metric tiles . today card (two-column task list) .
+ *   journey card (every day) . the member's own line.
+ */
 export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: string, opts: { details: boolean }) {
   const p = PALETTES[theme];
   const W = STORY_W;
   const H = STORY_H;
   const X = 72;
   const CW = W - X * 2;
+  const GAP = 28;
 
   // --- background: soft gradient with colour glows (the app's glass look)
   const bg = ctx.createLinearGradient(0, 0, W, H);
@@ -147,129 +178,116 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
 
   // --- brand row
   ctx.save();
-  ctx.lineWidth = 9;
+  ctx.lineWidth = 8;
+  ctx.lineCap = "round";
   ctx.strokeStyle = p.accent;
   ctx.beginPath();
-  ctx.arc(X + 30, 268, 26, Math.PI * 0.15, Math.PI * 1.85);
+  ctx.arc(X + 24, 276, 22, Math.PI * 0.15, Math.PI * 1.85);
   ctx.stroke();
   ctx.restore();
-  text(ctx, "endurance circle", X + 78, 284, { size: 50, weight: 700, color: p.ink, font, spacing: -1 });
-  text(ctx, d.dateLabel, W - X, 282, { size: 34, weight: 500, color: p.muted, font, align: "right" });
+  text(ctx, "Endurance Circle", X + 64, 290, { size: 40, weight: 700, color: p.ink, font, spacing: -0.5 });
+  text(ctx, d.dateLabel, W - X, 288, { size: 32, weight: 500, color: p.muted, font, align: "right" });
 
-  // --- hero: whose day, and which day
-  text(ctx, d.name, X, 376, { size: 54, weight: 700, color: p.ink, font, maxWidth: CW });
-  text(ctx, "DAY", X + 4, 438, { size: 32, weight: 600, color: p.muted, font, spacing: 8 });
+  // --- hero: whose day, which day, how far through
+  label(ctx, p, font, d.name, X + 2, 352);
   const num = String(d.dayNumber);
-  text(ctx, num, X - 6, 650, { size: 236, weight: 800, color: p.ink, font, spacing: -7 });
-  ctx.font = `800 236px ${font}`;
+  text(ctx, "Day", X, 506, { size: 56, weight: 600, color: p.muted, font });
+  ctx.font = `600 56px ${font}`;
+  const dayW = ctx.measureText("Day").width;
+  text(ctx, num, X + dayW + 24, 510, { size: 176, weight: 800, color: p.ink, font, spacing: -6 });
+  ctx.font = `800 176px ${font}`;
   const numW = ctx.measureText(num).width;
-  text(ctx, `/ ${d.totalDays}`, X + numW + 16, 650, { size: 84, weight: 600, color: p.muted, font });
-  // journey bar
-  rr(ctx, X, 686, CW, 18, 9);
-  ctx.fillStyle = p.track;
-  ctx.fill();
-  const frac = Math.max(0.02, Math.min(1, d.dayNumber / d.totalDays));
-  const barGrad = ctx.createLinearGradient(X, 0, X + CW, 0);
-  barGrad.addColorStop(0, p.accent);
-  barGrad.addColorStop(1, p.accent2);
-  rr(ctx, X, 686, CW * frac, 18, 9);
-  ctx.fillStyle = barGrad;
-  ctx.fill();
+  text(ctx, `of ${d.totalDays}`, X + dayW + 24 + numW + 20, 510, { size: 56, weight: 600, color: p.muted, font });
+  bar(ctx, p, X, 540, CW, 16, Math.max(0.02, d.dayNumber / d.totalDays));
 
-  // --- today card: ring + three stats
-  const cardY = 736;
-  const cardH = 300;
-  glassCard(ctx, p, X, cardY, CW, cardH);
-  const rcx = X + 196;
-  const rcy = cardY + cardH / 2;
-  const rad = 98;
-  ctx.lineWidth = 30;
-  ctx.lineCap = "round";
-  ctx.strokeStyle = p.track;
-  ctx.beginPath();
-  ctx.arc(rcx, rcy, rad, 0, Math.PI * 2);
-  ctx.stroke();
-  const ratio = d.required ? Math.min(1, d.done / d.required) : 0;
-  if (ratio > 0) {
-    const g = ctx.createLinearGradient(rcx - rad, rcy - rad, rcx + rad, rcy + rad);
-    g.addColorStop(0, p.accent);
-    g.addColorStop(1, p.accent2);
-    ctx.strokeStyle = g;
-    ctx.beginPath();
-    ctx.arc(rcx, rcy, rad, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
-    ctx.stroke();
-  }
-  text(ctx, `${d.done}/${d.required}`, rcx, rcy + 14, { size: 60, weight: 800, color: p.ink, font, align: "center", spacing: -2 });
-  text(ctx, "tasks", rcx, rcy + 52, { size: 26, weight: 500, color: p.muted, font, align: "center" });
-
-  const stats: { label: string; value: string }[] = [
-    { label: "STREAK", value: `${d.streak} ${d.streak === 1 ? "day" : "days"}` },
-    { label: "COMPLETION", value: `${d.completionPct}%` },
+  // --- three equal metric tiles
+  const tileY = 590;
+  const tileH = 144;
+  const tileW = (CW - GAP * 2) / 3;
+  const tiles: { label: string; value: string; sub: string }[] = [
+    { label: "Last 7 days", value: `${d.last7Pct}%`, sub: "of tasks done" },
+    { label: "Overall", value: `${d.completionPct}%`, sub: "since day 1" },
+    { label: "Streak", value: `${d.streak}`, sub: d.streak === 1 ? "perfect day" : "perfect days" },
   ];
-  if (opts.details && d.details) stats.push({ label: "RUN", value: d.details.runKm > 0 ? `${Math.round(d.details.runKm * 10) / 10} km` : "rest" });
-  else stats.push({ label: "DAY", value: `${d.dayNumber} of ${d.totalDays}` });
-  const sx = X + 420;
-  const rowH = 86;
-  stats.forEach((s, i) => {
-    const y = cardY + 40 + i * rowH;
-    text(ctx, s.label, sx, y + 22, { size: 22, weight: 600, color: p.muted, font, spacing: 4 });
-    text(ctx, s.value, sx, y + 64, { size: 46, weight: 800, color: p.ink, font, spacing: -1, maxWidth: CW - 420 - 36 });
+  tiles.forEach((t, i) => {
+    const tx = X + i * (tileW + GAP);
+    glassCard(ctx, p, tx, tileY, tileW, tileH, 44);
+    label(ctx, p, font, t.label, tx + 30, tileY + 44);
+    text(ctx, t.value, tx + 30, tileY + 104, { size: 60, weight: 800, color: p.ink, font, spacing: -2, maxWidth: tileW - 60 });
+    text(ctx, t.sub, tx + 30, tileY + 132, { size: 22, weight: 500, color: p.muted, font, maxWidth: tileW - 60 });
   });
 
-  // --- task chips
-  let cy = cardY + cardH + 32;
-  let cx = X;
-  const chipH = 54;
-  for (const t of d.tasks) {
-    ctx.font = `600 26px ${font}`;
-    const w = ctx.measureText(t.label).width + (t.done ? 72 : 48);
-    if (cx + w > X + CW) {
-      cx = X;
-      cy += chipH + 14;
-    }
-    rr(ctx, cx, cy, w, chipH, chipH / 2);
-    ctx.fillStyle = t.done ? p.accent : p.chipIdle;
-    ctx.fill();
-    let tx = cx + 24;
+  // --- today card: progress + two-column task list (+ own numbers)
+  const showDetails = opts.details && d.details;
+  const todayY = tileY + tileH + GAP;
+  const rows = Math.ceil(d.tasks.length / 2);
+  const rowH = 58;
+  const detailsH = showDetails ? 104 : 0;
+  const todayH = 150 + rows * rowH + 18 + detailsH;
+  glassCard(ctx, p, X, todayY, CW, todayH, 52);
+  label(ctx, p, font, "Today", X + 40, todayY + 58);
+  text(ctx, `${d.done} of ${d.required} tasks`, X + CW - 40, todayY + 60, { size: 30, weight: 700, color: p.ink, font, align: "right" });
+  bar(ctx, p, X + 40, todayY + 82, CW - 80, 14, d.required ? d.done / d.required : 0);
+
+  const colW = (CW - 80) / 2;
+  d.tasks.forEach((t, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const tx = X + 40 + col * colW;
+    const ty = todayY + 150 + row * rowH;
+    const cx = tx + 18;
+    const cy = ty + 18;
     if (t.done) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 18, 0, Math.PI * 2);
+      ctx.fillStyle = gradientFill(ctx, p, cx - 18, cy - 18, cx + 18, cy + 18);
+      ctx.fill();
       ctx.save();
       ctx.strokeStyle = p.onAccent;
-      ctx.lineWidth = 5;
+      ctx.lineWidth = 4.5;
       ctx.lineCap = "round";
       ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.moveTo(cx + 22, cy + chipH / 2 + 1);
-      ctx.lineTo(cx + 30, cy + chipH / 2 + 9);
-      ctx.lineTo(cx + 46, cy + chipH / 2 - 8);
+      ctx.moveTo(cx - 8, cy + 1);
+      ctx.lineTo(cx - 2, cy + 7);
+      ctx.lineTo(cx + 9, cy - 6);
       ctx.stroke();
       ctx.restore();
-      tx = cx + 56;
+    } else {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 16, 0, Math.PI * 2);
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = p.track;
+      ctx.stroke();
     }
-    text(ctx, t.label, tx, cy + 37, { size: 26, weight: 600, color: t.done ? p.onAccent : p.muted, font });
-    cx += w + 12;
-  }
-  let nextY = cy + chipH + 34;
+    text(ctx, t.label, tx + 52, ty + 28, { size: 28, weight: t.done ? 700 : 500, color: t.done ? p.ink : p.muted, font, maxWidth: colW - 64 });
+  });
 
-  // --- optional numbers line (own amounts, only when included)
-  if (opts.details && d.details) {
-    const bits = [
-      d.details.studyMin > 0 ? `Study ${fmtDuration(d.details.studyMin)}` : null,
-      d.details.waterL > 0 ? `Water ${Math.round(d.details.waterL * 10) / 10} L` : null,
-      d.details.readingMin > 0 ? `Reading ${d.details.readingMin} min` : null,
-    ].filter(Boolean) as string[];
-    if (bits.length) {
-      text(ctx, bits.join("   ·   "), W / 2, nextY + 10, { size: 28, weight: 600, color: p.muted, font, align: "center", maxWidth: CW });
-      nextY += 56;
-    }
+  if (showDetails && d.details) {
+    const dy = todayY + todayH - detailsH - 6;
+    ctx.fillStyle = p.track;
+    ctx.fillRect(X + 40, dy, CW - 80, 2);
+    const items = [
+      { l: "Run", v: d.details.runKm > 0 ? `${Math.round(d.details.runKm * 10) / 10} km` : "rest" },
+      { l: "Study", v: d.details.studyMin > 0 ? fmtDuration(d.details.studyMin) : "-" },
+      { l: "Water", v: d.details.waterL > 0 ? `${Math.round(d.details.waterL * 10) / 10} L` : "-" },
+      { l: "Reading", v: d.details.readingMin > 0 ? `${d.details.readingMin} min` : "-" },
+    ];
+    const iw = (CW - 80) / items.length;
+    items.forEach((it, i) => {
+      const ix = X + 40 + i * iw;
+      label(ctx, p, font, it.l, ix, dy + 40);
+      text(ctx, it.v, ix, dy + 82, { size: 34, weight: 800, color: p.ink, font, spacing: -0.5, maxWidth: iw - 12 });
+    });
   }
 
-  // --- the 75 days
-  const hmH = 292;
-  const hmY = nextY;
-  glassCard(ctx, p, X, hmY, CW, hmH, 48);
-  text(ctx, `Every day so far`, X + 40, hmY + 58, { size: 28, weight: 700, color: p.ink, font });
-  const done = d.cells.filter((c) => c === "done").length;
-  text(ctx, `${done} done`, X + CW - 40, hmY + 58, { size: 26, weight: 600, color: p.muted, font, align: "right" });
+  // --- journey card: every day of the programme
+  const hmY = todayY + todayH + GAP;
+  const hmH = 296;
+  glassCard(ctx, p, X, hmY, CW, hmH, 52);
+  label(ctx, p, font, "Every day so far", X + 40, hmY + 58);
+  const doneDays = d.cells.filter((c) => c === "done").length;
+  text(ctx, `${doneDays} perfect`, X + CW - 40, hmY + 60, { size: 30, weight: 700, color: p.ink, font, align: "right" });
   const cols = 15;
   const cell = 34;
   const gap = 8;
@@ -281,10 +299,7 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
     const y = gy + Math.floor(i / cols) * (cell + gap);
     rr(ctx, x, y, cell, cell, 11);
     if (c === "done") {
-      const g = ctx.createLinearGradient(x, y, x + cell, y + cell);
-      g.addColorStop(0, p.accent);
-      g.addColorStop(1, p.accent2);
-      ctx.fillStyle = g;
+      ctx.fillStyle = gradientFill(ctx, p, x, y, x + cell, y + cell);
       ctx.fill();
     } else if (c === "missed") {
       ctx.fillStyle = p.missed;
@@ -301,8 +316,6 @@ export function drawStory(ctx: Ctx, d: StoryData, theme: StoryTheme, font: strin
     }
   });
 
-  // --- footer
-  const fy = hmY + hmH + 58;
-  if (d.update) text(ctx, `“${d.update}”`, W / 2, fy, { size: 30, weight: 500, color: p.muted, font, align: "center", maxWidth: CW - 40 });
-  text(ctx, "endurance circle", W / 2, fy + (d.update ? 56 : 0), { size: 32, weight: 700, color: p.ink, font, align: "center", spacing: 1 });
+  // --- the member's own line (kept inside the bottom safe area)
+  if (d.update) text(ctx, `“${d.update}”`, W / 2, Math.min(hmY + hmH + 62, H - 250), { size: 30, weight: 500, color: p.muted, font, align: "center", maxWidth: CW - 40 });
 }

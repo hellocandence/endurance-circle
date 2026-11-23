@@ -64,6 +64,7 @@ export function weeklyBars(cells: DayCell[]): WeekBar[] {
 
 export type MemberStats = {
   completionPct: number;
+  last7Pct: number; // average share of tasks done over the last 7 days
   completedDays: number;
   elapsedDays: number;
   streak: number;
@@ -83,6 +84,7 @@ export function memberStats(cells: DayCell[], programme: { startDate: string; to
   const best = weeks.length ? weeks.reduce((a, b) => ((b.pct ?? 0) > (a.pct ?? 0) ? b : a)) : null;
   return {
     completionPct: win.pct,
+    last7Pct: completion(days, { ...programme, today, lastDays: 7 }).pct,
     completedDays: win.completed,
     elapsedDays: win.elapsed,
     streak: perfectDaysInARow(days, today),
